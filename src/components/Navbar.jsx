@@ -1,50 +1,50 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { TrendingUp, LogOut, LayoutDashboard, Shield } from 'lucide-react'
+import { LogoFull } from './Logo'
+import { LogOut, LayoutDashboard, Shield, Newspaper } from 'lucide-react'
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   async function handleSignOut() {
     await signOut()
     navigate('/')
   }
 
+  const navLink = (to, label, Icon) => {
+    const active = location.pathname.startsWith(to)
+    return (
+      <Link
+        to={to}
+        className={`flex items-center gap-1.5 text-sm transition-colors ${
+          active ? 'text-white' : 'text-white/50 hover:text-white'
+        }`}
+      >
+        <Icon size={15} />
+        {label}
+      </Link>
+    )
+  }
+
   return (
     <nav className="border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-[#EF9F27] flex items-center justify-center">
-            <TrendingUp size={18} className="text-black" />
-          </div>
-          <span className="font-bold text-white text-lg tracking-tight">
-            Prime<span className="text-[#EF9F27]">Picks</span>
-          </span>
+        <Link to="/">
+          <LogoFull />
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {navLink('/noticias', 'Noticias', Newspaper)}
+
           {user ? (
             <>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-[#EF9F27] transition-colors"
-                >
-                  <Shield size={15} />
-                  Admin
-                </Link>
-              )}
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
-              >
-                <LayoutDashboard size={15} />
-                Dashboard
-              </Link>
+              {isAdmin && navLink('/admin', 'Admin', Shield)}
+              {navLink('/dashboard', 'Picks', LayoutDashboard)}
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-1.5 text-sm text-white/40 hover:text-red-400 transition-colors"
+                className="flex items-center gap-1.5 text-sm text-white/35 hover:text-red-400 transition-colors"
               >
                 <LogOut size={15} />
                 Salir
@@ -53,7 +53,7 @@ export default function Navbar() {
           ) : (
             <Link
               to="/login"
-              className="px-4 py-2 text-sm font-medium bg-[#EF9F27] text-black rounded-lg hover:bg-[#D4891A] transition-colors"
+              className="px-4 py-2 text-sm font-semibold bg-[#00D964] text-black rounded-lg hover:bg-[#00B856] transition-colors"
             >
               Iniciar sesión
             </Link>

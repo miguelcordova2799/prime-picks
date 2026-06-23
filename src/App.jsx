@@ -6,6 +6,8 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import Noticias from './pages/Noticias'
+import NoticiaDetalle from './pages/NoticiaDetalle'
 
 function Layout({ children }) {
   return (
@@ -23,13 +25,13 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/noticias" element={<Layout><Noticias /></Layout>} />
+          <Route path="/noticias/:id" element={<Layout><NoticiaDetalle /></Layout>} />
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
+                <Layout><Dashboard /></Layout>
               </ProtectedRoute>
             }
           />
@@ -37,9 +39,7 @@ export default function App() {
             path="/admin"
             element={
               <AdminRoute>
-                <Layout>
-                  <Admin />
-                </Layout>
+                <Layout><Admin /></Layout>
               </AdminRoute>
             }
           />

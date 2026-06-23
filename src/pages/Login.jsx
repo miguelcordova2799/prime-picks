@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { TrendingUp, Eye, EyeOff } from 'lucide-react'
+import { LogoFull } from '../components/Logo'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const [mode, setMode] = useState('login')
@@ -39,20 +40,12 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-[#EF9F27] flex items-center justify-center">
-              <TrendingUp size={20} className="text-black" />
-            </div>
-            <span className="font-black text-white text-xl">
-              Prime<span className="text-[#EF9F27]">Picks</span>
-            </span>
-          </Link>
-          <p className="text-white/40 text-sm mt-3">
-            {mode === 'login' ? 'Accede a tus picks' : 'Crea tu cuenta gratis'}
-          </p>
+        <div className="flex justify-center mb-8">
+          <Link to="/"><LogoFull /></Link>
         </div>
+        <p className="text-center text-white/40 text-sm -mt-4 mb-8">
+          {mode === 'login' ? 'Accede a tus picks' : 'Crea tu cuenta gratis'}
+        </p>
 
         <div className="bg-[#111111] border border-white/10 rounded-2xl p-6">
           {/* Tabs */}
@@ -62,7 +55,7 @@ export default function Login() {
                 key={m}
                 onClick={() => { setMode(m); setError(''); setSuccess('') }}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === m ? 'bg-[#EF9F27] text-black' : 'text-white/40 hover:text-white'
+                  mode === m ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
                 }`}
               >
                 {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
@@ -79,7 +72,7 @@ export default function Login() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="tu@email.com"
-                className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#EF9F27]/50 transition-colors"
+                className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors"
               />
             </div>
 
@@ -93,7 +86,7 @@ export default function Login() {
                   required
                   minLength={6}
                   placeholder="Mínimo 6 caracteres"
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#EF9F27]/50 transition-colors pr-10"
+                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors pr-10"
                 />
                 <button
                   type="button"
@@ -111,7 +104,7 @@ export default function Login() {
               </div>
             )}
             {success && (
-              <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+              <div className="px-4 py-3 rounded-lg bg-[#00D964]/10 border border-[#00D964]/20 text-[#00D964] text-sm">
                 {success}
               </div>
             )}
@@ -119,7 +112,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#EF9F27] text-black font-bold rounded-lg hover:bg-[#D4891A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="w-full py-3 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {loading ? 'Cargando...' : mode === 'login' ? 'Entrar al dashboard' : 'Crear cuenta'}
             </button>

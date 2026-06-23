@@ -27,18 +27,18 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#EF9F27]/8 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-20 right-1/4 w-96 h-96 bg-[#EF9F27]/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#00D964]/6 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-20 right-1/4 w-96 h-96 bg-[#00D964]/4 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-16 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#EF9F27]/30 bg-[#EF9F27]/10 text-[#EF9F27] text-xs font-medium mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#EF9F27] animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#00D964]/30 bg-[#00D964]/10 text-[#00D964] text-xs font-medium mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00D964] animate-pulse" />
             Picks disponibles hoy
           </div>
 
           <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 leading-none">
             Apuesta con
-            <span className="block text-[#EF9F27]">inteligencia</span>
+            <span className="block text-[#00D964]">inteligencia</span>
           </h1>
 
           <p className="text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed">
@@ -49,7 +49,7 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               to="/login"
-              className="px-8 py-4 bg-[#EF9F27] text-black font-bold rounded-xl hover:bg-[#D4891A] transition-all hover:scale-105 text-base"
+              className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base"
             >
               Ver picks de hoy →
             </Link>
@@ -69,7 +69,7 @@ export default function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {STATS.map(({ label, value, sub }) => (
               <div key={label} className="text-center">
-                <div className="text-3xl md:text-4xl font-black text-[#EF9F27] mb-1">{value}</div>
+                <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{value}</div>
                 <div className="text-sm font-semibold text-white mb-0.5">{label}</div>
                 <div className="text-xs text-white/40">{sub}</div>
               </div>
@@ -82,7 +82,7 @@ export default function Landing() {
       <section className="max-w-6xl mx-auto px-4 py-20">
         <div className="text-center mb-14">
           <h2 className="text-3xl md:text-4xl font-black mb-4">
-            Por qué <span className="text-[#EF9F27]">Prime Picks</span>
+            Por qué <span className="text-[#00D964]">Prime Picks</span>
           </h2>
           <p className="text-white/40 text-base max-w-lg mx-auto">
             No somos adivinos. Somos analistas. Cada pick tiene el razonamiento detrás.
@@ -92,8 +92,8 @@ export default function Landing() {
         <div className="grid md:grid-cols-2 gap-4">
           {FEATURES.map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-4 p-5 rounded-xl bg-[#111111] border border-white/8">
-              <div className="w-10 h-10 rounded-lg bg-[#EF9F27]/15 flex items-center justify-center shrink-0">
-                <Icon size={20} className="text-[#EF9F27]" />
+              <div className="w-10 h-10 rounded-lg bg-[#00D964]/12 flex items-center justify-center shrink-0">
+                <Icon size={20} className="text-[#00D964]" />
               </div>
               <span className="text-white/80 text-sm">{text}</span>
             </div>
@@ -125,11 +125,11 @@ export default function Landing() {
             </div>
             <div>
               <div className="text-xs text-white/40 mb-1">Cuota</div>
-              <div className="text-sm font-bold text-[#EF9F27]">1.85</div>
+              <div className="text-sm font-bold text-white/80">1.85</div>
             </div>
             <div>
               <div className="text-xs text-white/40 mb-1">Edge</div>
-              <div className="text-sm font-bold text-emerald-400">+12.4%</div>
+              <div className="text-sm font-bold text-[#00D964]">+12.4%</div>
             </div>
           </div>
           <div className="p-5 relative">
@@ -140,7 +140,7 @@ export default function Landing() {
               <div className="text-center">
                 <Lock size={22} className="text-[#EF9F27] mx-auto mb-2" />
                 <div className="text-sm font-semibold text-white">Análisis para suscriptores</div>
-                <Link to="/login" className="text-xs text-[#EF9F27] hover:underline mt-1 block">Suscríbete →</Link>
+                <Link to="/login" className="text-xs text-[#00D964] hover:underline mt-1 block">Suscríbete →</Link>
               </div>
             </div>
           </div>
@@ -166,21 +166,21 @@ export default function Landing() {
               <ul className="space-y-3 mb-8 flex-1">
                 {['Todos los picks del día', 'Análisis completo', 'Historial 30 días', 'Soporte por WhatsApp'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-white/70">
-                    <CheckCircle size={15} className="text-[#EF9F27] shrink-0" />
+                    <CheckCircle size={15} className="text-[#00D964] shrink-0" />
                     {f}
                   </li>
                 ))}
               </ul>
               <Link
                 to="/login"
-                className="w-full py-3 rounded-xl border border-[#EF9F27]/50 text-[#EF9F27] text-sm font-semibold text-center hover:bg-[#EF9F27]/10 transition-colors"
+                className="w-full py-3 rounded-xl border border-[#00D964]/40 text-[#00D964] text-sm font-semibold text-center hover:bg-[#00D964]/8 transition-colors"
               >
                 Empezar ahora
               </Link>
             </div>
 
-            {/* World / One-time */}
-            <div className="rounded-2xl bg-gradient-to-b from-[#EF9F27]/15 to-[#161616] border border-[#EF9F27]/40 p-7 flex flex-col relative">
+            {/* World / One-time — gold accent (premium) */}
+            <div className="rounded-2xl bg-gradient-to-b from-[#EF9F27]/12 to-[#161616] border border-[#EF9F27]/35 p-7 flex flex-col relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#EF9F27] text-black text-xs font-bold rounded-full">
                 MEJOR VALOR
               </div>
@@ -199,7 +199,7 @@ export default function Landing() {
               </ul>
               <Link
                 to="/login"
-                className="w-full py-3 rounded-xl bg-[#EF9F27] text-black text-sm font-bold text-center hover:bg-[#D4891A] transition-colors"
+                className="w-full py-3 rounded-xl bg-[#00D964] text-black text-sm font-bold text-center hover:bg-[#00B856] transition-colors"
               >
                 Quiero acceso vitalicio →
               </Link>
@@ -233,7 +233,7 @@ export default function Landing() {
           <p className="text-white/40 mb-8">Únete a cientos de apostadores que ya confían en nuestro análisis.</p>
           <Link
             to="/login"
-            className="inline-block px-10 py-4 bg-[#EF9F27] text-black font-bold rounded-xl hover:bg-[#D4891A] transition-all hover:scale-105 text-base"
+            className="inline-block px-10 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base"
           >
             Comenzar gratis →
           </Link>
