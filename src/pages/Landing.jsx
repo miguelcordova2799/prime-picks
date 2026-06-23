@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { TrendingUp, Shield, Zap, CheckCircle, Lock, Star } from 'lucide-react'
+import { LogoIcon } from '../components/Logo'
 
 const STATS = [
   { label: 'Acierto', value: '67%', sub: 'Últimos 90 días' },
@@ -31,6 +32,15 @@ export default function Landing() {
         <div className="absolute top-20 right-1/4 w-96 h-96 bg-[#00D964]/4 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-16 text-center">
+          <div className="flex justify-center mb-8">
+            <img
+              src="/logo.png"
+              alt="Prime Picks"
+              className="w-[280px] md:w-[340px] h-auto object-contain"
+              style={{ filter: 'drop-shadow(0 0 24px rgba(0, 217, 100, 0.3))' }}
+            />
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#00D964]/30 bg-[#00D964]/10 text-[#00D964] text-xs font-medium mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00D964] animate-pulse" />
             Picks disponibles hoy

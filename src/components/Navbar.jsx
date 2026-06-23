@@ -32,7 +32,7 @@ export default function Navbar() {
     <nav className="border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/">
-          <LogoFull />
+          <LogoFull height={44} />
         </Link>
 
         <div className="flex items-center gap-4">
