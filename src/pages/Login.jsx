@@ -41,7 +41,7 @@ export default function Login() {
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
-          <Link to="/"><LogoFull /></Link>
+          <Link to="/"><LogoFull height={56} /></Link>
         </div>
         <p className="text-center text-white/40 text-sm -mt-4 mb-8">
           {mode === 'login' ? 'Accede a tus picks' : 'Crea tu cuenta gratis'}
