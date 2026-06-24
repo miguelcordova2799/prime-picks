@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, Users, BarChart2, AlertTriangle } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 /* ── TRANSLATIONS ─────────────────────────────────────────── */
 const T = {
@@ -256,7 +257,47 @@ const T = {
 
 const SERVICE_ICONS = [Target, BookOpen, Newspaper, Users]
 
-const STAT_VALUES = ['67%', '+18.4%', '240+', '8W']
+/* ── LIVE STATS FROM SUPABASE ──────────────────────────────── */
+function usePickStats() {
+  const [stats, setStats] = useState({ hitRate: null, roi: null, total: null, streak: null })
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('picks')
+        .select('result, odds')
+        .order('published_at', { ascending: false })
+
+      if (!data || data.length === 0) return
+
+      const resolved = data.filter(p => p.result !== 'pending')
+      const won = resolved.filter(p => p.result === 'won')
+      const lost = resolved.filter(p => p.result === 'lost')
+
+      const hitRate = resolved.length > 0
+        ? Math.round((won.length / resolved.length) * 100)
+        : null
+
+      const roiRaw = resolved.length > 0
+        ? ((won.reduce((s, p) => s + (parseFloat(p.odds) - 1), 0) - lost.length) / resolved.length) * 100
+        : null
+      const roi = roiRaw !== null ? Math.round(roiRaw * 10) / 10 : null
+
+      // Consecutive wins from most recent resolved pick
+      let streak = 0
+      for (const p of data) {
+        if (p.result === 'pending') continue
+        if (p.result === 'won') streak++
+        else break
+      }
+
+      setStats({ hitRate, roi, total: data.length, streak })
+    }
+    load()
+  }, [])
+
+  return stats
+}
 
 /* ── COMPONENT ────────────────────────────────────────────── */
 export default function Landing() {
@@ -269,6 +310,15 @@ export default function Landing() {
     window.addEventListener('pp:langchange', handler)
     return () => window.removeEventListener('pp:langchange', handler)
   }, [])
+
+  const { hitRate, roi, total, streak } = usePickStats()
+
+  const fmtHit    = hitRate !== null ? `${hitRate}%`                        : '—'
+  const fmtRoi    = roi     !== null ? `${roi >= 0 ? '+' : ''}${roi}%`     : '—'
+  const fmtTotal  = total   !== null && total > 0 ? `${total}`              : '—'
+  const fmtStreak = streak  > 0 ? `${streak}W`                              : '—'
+
+  const STAT_LIVE = [fmtHit, fmtRoi, fmtTotal, fmtStreak]
 
   const t = T[lang]
 
@@ -322,15 +372,15 @@ export default function Landing() {
             {/* Left: visual stats card */}
             <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 space-y-0">
               <div className="pb-6">
-                <div className="text-5xl font-black text-[#00D964]">67%</div>
+                <div className="text-5xl font-black text-[#00D964]">{fmtHit}</div>
                 <div className="text-sm text-white/40 mt-1">{t.aboutStat1}</div>
               </div>
               <div className="border-t border-white/8 py-6">
-                <div className="text-5xl font-black text-[#00D964]">+18.4%</div>
+                <div className="text-5xl font-black text-[#00D964]">{fmtRoi}</div>
                 <div className="text-sm text-white/40 mt-1">{t.aboutStat2}</div>
               </div>
               <div className="border-t border-white/8 pt-6">
-                <div className="text-5xl font-black text-white">240+</div>
+                <div className="text-5xl font-black text-white">{fmtTotal}</div>
                 <div className="text-sm text-white/40 mt-1">{t.aboutStat3}</div>
               </div>
             </div>
@@ -354,7 +404,7 @@ export default function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {t.stats.map(({ label, sub }, i) => (
               <div key={i} className="text-center">
-                <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{STAT_VALUES[i]}</div>
+                <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{STAT_LIVE[i]}</div>
                 <div className="text-sm font-semibold text-white mb-0.5">{label}</div>
                 <div className="text-xs text-white/40">{sub}</div>
               </div>
@@ -474,24 +524,6 @@ export default function Landing() {
               <PlanCard key={plan.name} plan={plan} t={t} />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section className="max-w-6xl mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-black mb-3">{t.testimonialsTitle}</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {t.testimonials.map(({ name, city, text }) => (
-            <div key={name} className="p-6 rounded-xl bg-[#111111] border border-white/8">
-              <div className="flex gap-0.5 mb-4">
-                {[1,2,3,4,5].map(i => <Star key={i} size={13} className="fill-[#EF9F27] text-[#EF9F27]" />)}
-              </div>
-              <p className="text-white/70 text-sm leading-relaxed mb-4">"{text}"</p>
-              <div className="text-xs text-white/40">{name} · {city}</div>
-            </div>
-          ))}
         </div>
       </section>
 
