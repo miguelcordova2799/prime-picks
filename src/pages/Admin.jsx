@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2 } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X } from 'lucide-react'
 
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', edge: '',
@@ -256,6 +256,8 @@ function NoticiasAdmin() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState('')
+  const [imageMode, setImageMode] = useState('file')
+  const [fileInputKey, setFileInputKey] = useState(0)
 
   useEffect(() => { fetchNews() }, [])
 
@@ -267,6 +269,24 @@ function NoticiasAdmin() {
   }
 
   const field = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleImageFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => field('image_url', ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  function clearImage() {
+    field('image_url', '')
+    setFileInputKey(k => k + 1)
+  }
+
+  function switchMode(mode) {
+    setImageMode(mode)
+    clearImage()
+  }
 
   async function handlePublish(e) {
     e.preventDefault()
@@ -281,7 +301,12 @@ function NoticiasAdmin() {
     })
     setSubmitting(false)
     if (error) showToast('Error: ' + error.message)
-    else { showToast('Noticia publicada ✓'); setForm(EMPTY_NEWS); fetchNews() }
+    else {
+      showToast('Noticia publicada ✓')
+      setForm(EMPTY_NEWS)
+      setFileInputKey(k => k + 1)
+      fetchNews()
+    }
   }
 
   async function handleDelete(id) {
@@ -318,16 +343,74 @@ function NoticiasAdmin() {
             <Field label="Contenido completo *">
               <textarea value={form.content} onChange={e => field('content', e.target.value)} required rows={6} placeholder="Escribe el artículo completo aquí. Separa párrafos con doble salto de línea." className="input-style resize-none" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Categoría">
-                <select value={form.category} onChange={e => field('category', e.target.value)} className="input-style">
-                  {NEWS_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </Field>
-              <Field label="URL imagen (opcional)">
-                <input value={form.image_url} onChange={e => field('image_url', e.target.value)} placeholder="https://..." className="input-style" />
-              </Field>
+            <Field label="Categoría">
+              <select value={form.category} onChange={e => field('category', e.target.value)} className="input-style">
+                {NEWS_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </Field>
+
+            {/* ── IMAGE FIELD ── */}
+            <div>
+              <label className="block text-xs text-white/40 mb-1.5">Imagen (opcional)</label>
+              {/* Mode toggle */}
+              <div className="flex gap-0.5 p-0.5 bg-[#0A0A0A] border border-white/10 rounded-lg w-fit mb-2">
+                <button type="button" onClick={() => switchMode('file')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    imageMode === 'file' ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
+                  }`}>
+                  <Upload size={11} /> Subir archivo
+                </button>
+                <button type="button" onClick={() => switchMode('url')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    imageMode === 'url' ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
+                  }`}>
+                  URL externa
+                </button>
+              </div>
+
+              {imageMode === 'file' ? (
+                <label className="block cursor-pointer">
+                  <div className="input-style flex items-center gap-2 text-white/30 hover:border-[#00D964]/45 transition-colors cursor-pointer">
+                    <Upload size={14} className="shrink-0" />
+                    <span>{form.image_url ? 'Cambiar imagen' : 'Seleccionar imagen desde el dispositivo...'}</span>
+                  </div>
+                  <input
+                    key={fileInputKey}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFile}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <input
+                  value={form.image_url}
+                  onChange={e => field('image_url', e.target.value)}
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  className="input-style"
+                />
+              )}
+
+              {/* Preview */}
+              {form.image_url && (
+                <div className="mt-2 relative rounded-lg overflow-hidden h-32 bg-[#0A0A0A] border border-white/10">
+                  <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black/90 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                  {imageMode === 'file' && (
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/60 text-xs text-white/60">
+                      Imagen local (base64)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             <Field label="Fecha/hora programada (opcional)">
               <input type="datetime-local" value={form.scheduled_at} onChange={e => field('scheduled_at', e.target.value)} className="input-style" />
             </Field>
