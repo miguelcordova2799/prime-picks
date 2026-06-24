@@ -25,7 +25,7 @@ export default function App() {
       <AuthProvider>
         <LanguageProvider>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Layout><Landing /></Layout>} />
             <Route path="/login" element={<Login />} />
             <Route path="/noticias" element={<Layout><Noticias /></Layout>} />
             <Route path="/noticias/:id" element={<Layout><NoticiaDetalle /></Layout>} />
