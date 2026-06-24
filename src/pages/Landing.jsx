@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, Users, BarChart2, AlertTriangle } from 'lucide-react'
-import { useLang } from '../context/LanguageContext'
 
 /* ── TRANSLATIONS ─────────────────────────────────────────── */
 const T = {
@@ -260,7 +260,16 @@ const STAT_VALUES = ['67%', '+18.4%', '240+', '8W']
 
 /* ── COMPONENT ────────────────────────────────────────────── */
 export default function Landing() {
-  const { lang } = useLang()
+  const [lang, setLang] = useState(() => {
+    try { return localStorage.getItem('pp_lang') || 'es' } catch { return 'es' }
+  })
+
+  useEffect(() => {
+    const handler = (e) => setLang(e.detail)
+    window.addEventListener('pp:langchange', handler)
+    return () => window.removeEventListener('pp:langchange', handler)
+  }, [])
+
   const t = T[lang]
 
   return (

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo } from 'react'
 
 const LanguageContext = createContext(null)
 
@@ -7,13 +7,19 @@ export function LanguageProvider({ children }) {
     try { return localStorage.getItem('pp_lang') || 'es' } catch { return 'es' }
   })
 
-  function changeLang(l) {
+  const changeLang = useCallback((l) => {
     setLang(l)
-    try { localStorage.setItem('pp_lang', l) } catch {}
-  }
+    try {
+      localStorage.setItem('pp_lang', l)
+      // Broadcast so any component can listen without needing context
+      window.dispatchEvent(new CustomEvent('pp:langchange', { detail: l }))
+    } catch {}
+  }, [])
+
+  const value = useMemo(() => ({ lang, setLang: changeLang }), [lang, changeLang])
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang: changeLang }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   )
