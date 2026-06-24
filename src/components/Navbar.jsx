@@ -1,12 +1,20 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
 import { LogoFull } from './Logo'
 import { LogOut, LayoutDashboard, Shield, Newspaper } from 'lucide-react'
 
+const NAV_T = {
+  es: { news: 'Noticias', picks: 'Picks', signOut: 'Salir', signIn: 'Iniciar sesión' },
+  en: { news: 'News',     picks: 'Picks', signOut: 'Sign out', signIn: 'Sign in' },
+}
+
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth()
+  const { lang, setLang } = useLang()
   const navigate = useNavigate()
   const location = useLocation()
+  const t = NAV_T[lang]
 
   async function handleSignOut() {
     await signOut()
@@ -36,18 +44,18 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {navLink('/noticias', 'Noticias', Newspaper)}
+          {navLink('/noticias', t.news, Newspaper)}
 
           {user ? (
             <>
               {isAdmin && navLink('/admin', 'Admin', Shield)}
-              {navLink('/dashboard', 'Picks', LayoutDashboard)}
+              {navLink('/dashboard', t.picks, LayoutDashboard)}
               <button
                 onClick={handleSignOut}
                 className="flex items-center gap-1.5 text-sm text-white/35 hover:text-red-400 transition-colors"
               >
                 <LogOut size={15} />
-                Salir
+                {t.signOut}
               </button>
             </>
           ) : (
@@ -55,9 +63,24 @@ export default function Navbar() {
               to="/login"
               className="px-4 py-2 text-sm font-semibold bg-[#00D964] text-black rounded-lg hover:bg-[#00B856] transition-colors"
             >
-              Iniciar sesión
+              {t.signIn}
             </Link>
           )}
+
+          {/* Language toggle */}
+          <div className="flex rounded-lg bg-white/6 p-0.5">
+            {['es', 'en'].map(l => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase transition-colors ${
+                  lang === l ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </nav>
