@@ -266,84 +266,93 @@ function ShareModal({ pick, onClose }) {
     ctx.fillRect(0, 0, W, H)
 
     const font = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    const CX = W / 2
+    let y = 220
 
-    const img = new window.Image()
-    img.onload = () => {
-      let y = 220
-      const CX = W / 2
+    // "PRIME PICKS" badge — rounded green pill, no external image needed
+    const badgeW = 320, badgeH = 80, badgeR = 16
+    const badgeX = CX - badgeW / 2
+    ctx.fillStyle = '#00D964'
+    ctx.beginPath()
+    ctx.moveTo(badgeX + badgeR, y)
+    ctx.lineTo(badgeX + badgeW - badgeR, y)
+    ctx.quadraticCurveTo(badgeX + badgeW, y, badgeX + badgeW, y + badgeR)
+    ctx.lineTo(badgeX + badgeW, y + badgeH - badgeR)
+    ctx.quadraticCurveTo(badgeX + badgeW, y + badgeH, badgeX + badgeW - badgeR, y + badgeH)
+    ctx.lineTo(badgeX + badgeR, y + badgeH)
+    ctx.quadraticCurveTo(badgeX, y + badgeH, badgeX, y + badgeH - badgeR)
+    ctx.lineTo(badgeX, y + badgeR)
+    ctx.quadraticCurveTo(badgeX, y, badgeX + badgeR, y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#000000'
+    ctx.font = `bold 52px ${font}`
+    ctx.textAlign = 'center'
+    ctx.fillText('PRIME PICKS', CX, y + 54)
+    y += badgeH + 90
 
-      // Logo centered
-      const logoW = 380
-      const logoH = Math.round((img.height / img.width) * logoW)
-      ctx.drawImage(img, CX - logoW / 2, y, logoW, logoH)
-      y += logoH + 90
+    // Green divider
+    ctx.strokeStyle = '#00D964'
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(W * 0.15, y)
+    ctx.lineTo(W * 0.85, y)
+    ctx.stroke()
+    y += 100
 
-      // Green divider
-      ctx.strokeStyle = '#00D964'
-      ctx.lineWidth = 5
-      ctx.beginPath()
-      ctx.moveTo(W * 0.15, y)
-      ctx.lineTo(W * 0.85, y)
-      ctx.stroke()
-      y += 100
+    // ✅ PICK GANADO
+    ctx.fillStyle = '#00D964'
+    ctx.font = `bold 120px ${font}`
+    ctx.fillText('✅ PICK GANADO', CX, y)
+    y += 160
 
-      // ✅ PICK GANADO
-      ctx.fillStyle = '#00D964'
-      ctx.font = `bold 120px ${font}`
-      ctx.textAlign = 'center'
-      ctx.fillText('✅ PICK GANADO', CX, y)
-      y += 160
+    // Match name (wrapped)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `bold 80px ${font}`
+    const matchLines = wrapText(ctx, pick.match_name, W * 0.82)
+    matchLines.forEach(line => {
+      ctx.fillText(line, CX, y)
+      y += 105
+    })
+    y += 50
 
-      // Match name (wrapped)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = `bold 80px ${font}`
-      const matchLines = wrapText(ctx, pick.match_name, W * 0.82)
-      matchLines.forEach(line => {
-        ctx.fillText(line, CX, y)
-        y += 105
-      })
-      y += 50
+    // Pick text
+    ctx.fillStyle = 'rgba(255,255,255,0.72)'
+    ctx.font = `600 65px ${font}`
+    ctx.fillText(`Pick: ${pick.pick_text}`, CX, y)
+    y += 100
 
-      // Pick text
-      ctx.fillStyle = 'rgba(255,255,255,0.72)'
-      ctx.font = `600 65px ${font}`
-      ctx.fillText(`Pick: ${pick.pick_text}`, CX, y)
-      y += 100
+    // Cuota / Edge
+    ctx.fillStyle = '#00D964'
+    ctx.font = `bold 65px ${font}`
+    ctx.fillText(`Cuota: ${formatOdds(pick.odds)} | Edge: +${pick.edge}%`, CX, y)
+    y += 110
 
-      // Cuota / Edge
-      ctx.fillStyle = '#00D964'
-      ctx.font = `bold 65px ${font}`
-      ctx.fillText(`Cuota: ${formatOdds(pick.odds)} | Edge: +${pick.edge}%`, CX, y)
-      y += 110
+    // Stars (solid gold ★)
+    ctx.fillStyle = '#EF9F27'
+    ctx.font = `bold 90px ${font}`
+    ctx.fillText('★'.repeat(pick.stars || 3), CX, y)
+    y += 120
 
-      // Stars (solid gold ★)
-      ctx.fillStyle = '#EF9F27'
-      ctx.font = `bold 90px ${font}`
-      ctx.fillText('★'.repeat(pick.stars || 3), CX, y)
-      y += 120
+    // Light divider
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(W * 0.15, y)
+    ctx.lineTo(W * 0.85, y)
+    ctx.stroke()
+    y += 100
 
-      // Light divider
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(W * 0.15, y)
-      ctx.lineTo(W * 0.85, y)
-      ctx.stroke()
-      y += 100
+    // primepicks.mx
+    ctx.fillStyle = '#00D964'
+    ctx.font = `bold 70px ${font}`
+    ctx.fillText('primepicks.mx', CX, y)
+    y += 80
 
-      // primepicks.mx
-      ctx.fillStyle = '#00D964'
-      ctx.font = `bold 70px ${font}`
-      ctx.fillText('primepicks.mx', CX, y)
-      y += 80
-
-      // Tagline
-      ctx.fillStyle = 'rgba(255,255,255,0.38)'
-      ctx.font = `50px ${font}`
-      ctx.fillText('Picks deportivos con análisis real', CX, y)
-    }
-
-    img.src = '/logo.png'
+    // Tagline
+    ctx.fillStyle = 'rgba(255,255,255,0.38)'
+    ctx.font = `50px ${font}`
+    ctx.fillText('Picks deportivos con análisis real', CX, y)
   }, [pick])
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -351,7 +360,10 @@ function ShareModal({ pick, onClose }) {
   function handleDownload() {
     const canvas = canvasRef.current
     if (isIOS) {
-      window.open(canvas.toDataURL('image/png'), '_blank')
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank')
+      }, 'image/png')
     } else {
       const link = document.createElement('a')
       link.download = 'primepicks-ganado.png'
