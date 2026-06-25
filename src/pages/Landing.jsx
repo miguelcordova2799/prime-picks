@@ -52,7 +52,7 @@ const T = {
 
     // Pick preview
     pickPreviewTitle: 'Así se ven los picks',
-    pickPreviewSub: 'Vista real de un pick publicado (suscriptores ven el análisis completo)',
+    pickPreviewSub: 'Así se ve un pick en el dashboard — los picks reales son exclusivos para suscriptores',
     pickDate: 'Hoy · 20:00 · Bet365',
     pickMatch: 'Real Madrid vs Barcelona',
     pickLabel: 'Pick',
@@ -176,7 +176,7 @@ const T = {
     ],
 
     pickPreviewTitle: 'What picks look like',
-    pickPreviewSub: 'Real view of a published pick (subscribers see the full analysis)',
+    pickPreviewSub: 'This is how a pick looks in the dashboard — real picks are exclusive to subscribers',
     pickDate: 'Today · 8:00 PM · Bet365',
     pickMatch: 'Real Madrid vs Barcelona',
     pickLabel: 'Pick',
@@ -471,6 +471,12 @@ export default function Landing() {
         <div className="text-center mb-10">
           <h2 className="text-2xl font-black mb-2">{t.pickPreviewTitle}</h2>
           <p className="text-white/40 text-sm">{t.pickPreviewSub}</p>
+        </div>
+
+        <div className="max-w-lg mx-auto mb-3 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">
+            📋 {lang === 'es' ? 'Ejemplo demostrativo — no es un pick real' : 'Demonstration example — not a real pick'}
+          </span>
         </div>
 
         <div className="max-w-lg mx-auto rounded-2xl bg-[#111111] border border-white/10 overflow-hidden">
