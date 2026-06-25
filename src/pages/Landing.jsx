@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, Users, BarChart2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { formatOdds } from '../lib/odds'
 
 /* ── TRANSLATIONS ─────────────────────────────────────────── */
 const T = {
@@ -489,7 +490,7 @@ export default function Landing() {
             </div>
             <div>
               <div className="text-xs text-white/40 mb-1">{t.oddsLabel}</div>
-              <div className="text-sm font-bold text-white/80">1.85</div>
+              <div className="text-sm font-bold text-white/80">{formatOdds(1.85)}</div>
             </div>
             <div>
               <div className="text-xs text-white/40 mb-1">{t.edgeLabel}</div>

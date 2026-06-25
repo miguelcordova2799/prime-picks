@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
 import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X } from 'lucide-react'
+import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', edge: '',
@@ -100,10 +101,11 @@ function PicksAdmin() {
   async function handlePublish(e) {
     e.preventDefault()
     setSubmitting(true)
+    const decimalOdds = americanToDecimal(form.odds) ?? parseFloat(form.odds)
     const { error } = await supabase.from('picks').insert({
       match_name: form.match_name,
       pick_text: form.pick_text,
-      odds: parseFloat(form.odds),
+      odds: decimalOdds,
       bookmaker: form.bookmaker,
       edge: parseFloat(form.edge) || 0,
       stars: parseInt(form.stars),
@@ -146,8 +148,8 @@ function PicksAdmin() {
               <Field label="Pick *">
                 <input value={form.pick_text} onChange={e => field('pick_text', e.target.value)} required placeholder="Ambos anotan" className="input-style" />
               </Field>
-              <Field label="Cuota *">
-                <input type="number" step="0.01" min="1" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="1.85" className="input-style" />
+              <Field label="Cuota * (americano)">
+                <input type="text" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="+110 o -110" className="input-style" />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -216,7 +218,7 @@ function AdminPickCard({ pick, onResult }) {
         <div className="min-w-0">
           <div className="text-xs text-white/35 mb-0.5">{date}</div>
           <div className="text-sm font-semibold text-white truncate">{pick.match_name}</div>
-          <div className="text-xs text-white/50 mt-0.5">{pick.pick_text} · @{pick.odds}</div>
+          <div className="text-xs text-white/50 mt-0.5">{pick.pick_text} · {formatOdds(pick.odds)}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Stars count={pick.stars} />

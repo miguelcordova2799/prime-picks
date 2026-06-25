@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Stars from '../components/Stars'
 import { Lock, TrendingUp, Trophy, Target, ChevronRight } from 'lucide-react'
+import { formatOdds } from '../lib/odds'
 
 const RESULT_STYLES = {
   pending: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
@@ -134,7 +135,7 @@ function PickCard({ pick, isSubscribed }) {
       '✅ PICK GANADO — Prime Picks',
       `⚽ ${pick.match_name}`,
       `🎯 Pick: ${pick.pick_text}`,
-      `📈 Cuota: ${pick.odds} | Edge: +${pick.edge}%`,
+      `📈 Cuota: ${formatOdds(pick.odds)} | Edge: +${pick.edge}%`,
       stars,
       '🔥 Seguimos sumando. Únete en primepicks.mx',
     ].join('\n')
@@ -143,6 +144,28 @@ function PickCard({ pick, isSubscribed }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     })
+  }
+
+  // Locked: show only match name + upsell, hide all pick details
+  if (locked) {
+    return (
+      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
+        <div className="p-4">
+          <div className="text-xs text-white/35 mb-1">{formattedDate} · {pick.bookmaker}</div>
+          <div className="font-bold text-white truncate">{pick.match_name}</div>
+        </div>
+        <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
+          <span className="text-xl">🔒</span>
+          <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
+          <Link
+            to="/#pricing"
+            className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"
+          >
+            Ver planes
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -167,7 +190,7 @@ function PickCard({ pick, isSubscribed }) {
         </div>
         <div>
           <div className="text-xs text-white/35 mb-1">Cuota</div>
-          <div className="text-sm font-semibold text-white/80">{pick.odds}</div>
+          <div className="text-sm font-semibold text-white/80">{formatOdds(pick.odds)}</div>
         </div>
         <div>
           <div className="text-xs text-white/35 mb-1">Edge</div>
@@ -175,23 +198,9 @@ function PickCard({ pick, isSubscribed }) {
         </div>
       </div>
 
-      <div className="px-4 pb-4 relative">
+      <div className="px-4 pb-4">
         <div className="text-xs text-white/35 mb-2">Análisis</div>
-        {locked ? (
-          <div className="relative">
-            <div className="text-sm text-white/50 leading-relaxed blur-sm select-none line-clamp-3">
-              {pick.analysis || 'Análisis detallado disponible para suscriptores con edge detectado y modelo estadístico aplicado...'}
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#161616] border border-white/15 rounded-lg">
-                <Lock size={14} className="text-[#EF9F27]" />
-                <span className="text-xs text-white/60">Solo para suscriptores</span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-        )}
+        <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
       </div>
 
       {pick.result === 'won' && (
