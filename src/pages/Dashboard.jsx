@@ -355,21 +355,30 @@ function ShareModal({ pick, onClose }) {
     ctx.fillText('Picks deportivos con análisis real', CX, y)
   }, [pick])
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const canShare = !!navigator.share && !!navigator.canShare
 
-  function handleDownload() {
+  function handleAction() {
     const canvas = canvasRef.current
-    if (isIOS) {
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob)
-        window.open(url, '_blank')
-      }, 'image/png')
-    } else {
+    canvas.toBlob(blob => {
+      if (canShare) {
+        const file = new File([blob], 'primepicks-ganado.png', { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: 'Pick Ganado - Prime Picks',
+            text: 'primepicks.mx',
+          }).catch(() => {})
+          return
+        }
+      }
+      // Fallback: direct download
+      const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = 'primepicks-ganado.png'
-      link.href = canvas.toDataURL('image/png')
+      link.href = url
       link.click()
-    }
+      URL.revokeObjectURL(url)
+    }, 'image/png')
   }
 
   return (
@@ -407,19 +416,19 @@ function ShareModal({ pick, onClose }) {
 
         {/* Actions */}
         <button
-          onClick={handleDownload}
+          onClick={handleAction}
           className="w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors flex items-center justify-center gap-2"
         >
-          {isIOS ? (
-            '📱 Ver imagen — mantén presionada para guardar'
+          {canShare ? (
+            '📤 Compartir en Instagram Stories'
           ) : (
             <><Download size={16} /> Descargar imagen</>
           )}
         </button>
         <p className="text-center text-xs text-white/30 mt-3">
-          {isIOS
-            ? "Mantén presionada la imagen y toca 'Añadir a Fotos'"
-            : 'Imagen 1080×1920 px lista para Instagram Stories'}
+          {canShare
+            ? 'Se abre el menú de compartir de tu iPhone — elige Instagram'
+            : 'Imagen 1080×1920px lista para Instagram Stories'}
         </p>
       </div>
     </div>
