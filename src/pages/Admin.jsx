@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
@@ -31,9 +31,12 @@ export default function Admin() {
         <div className="flex gap-1 p-1 bg-[#111111] border border-white/8 rounded-xl w-fit mb-8">
           <TabBtn active={tab === 'picks'} onClick={() => setTab('picks')} icon={Plus} label="Picks" />
           <TabBtn active={tab === 'noticias'} onClick={() => setTab('noticias')} icon={Newspaper} label="Noticias" />
+          <TabBtn active={tab === 'lineas'} onClick={() => setTab('lineas')} icon={BarChart2} label="Líneas" />
         </div>
 
-        {tab === 'picks' ? <PicksAdmin /> : <NoticiasAdmin />}
+        {tab === 'picks' && <PicksAdmin />}
+        {tab === 'noticias' && <NoticiasAdmin />}
+        {tab === 'lineas' && <LineasAdmin />}
       </div>
 
       <style>{`
@@ -471,6 +474,189 @@ function AdminNewsCard({ noticia, onDelete }) {
           >
             <Trash2 size={13} /> Eliminar noticia
           </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── LÍNEAS ADMIN ────────────────────────────────────────────── */
+const ODDS_URL =
+  'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/' +
+  '?apiKey=5f4cad443d8840f12b684f72529e46f0' +
+  '&regions=eu,uk&markets=h2h&oddsFormat=american&bookmakers=bet365,pinnacle'
+
+function fmtPrice(price) {
+  if (price == null) return '—'
+  return price > 0 ? `+${price}` : `${price}`
+}
+
+function fmtGameTime(iso) {
+  const d = new Date(iso)
+  const tz = 'America/Mexico_City'
+  const day = d.toLocaleDateString('es-MX', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true })
+  return `${day} · ${time}`
+}
+
+function getOutcome(bookmaker, gameName, type, homeTeam, awayTeam) {
+  if (!bookmaker) return null
+  const market = bookmaker.markets?.find(m => m.key === 'h2h')
+  if (!market) return null
+  if (type === 'home') return market.outcomes?.find(o => o.name === homeTeam)?.price ?? null
+  if (type === 'away') return market.outcomes?.find(o => o.name === awayTeam)?.price ?? null
+  if (type === 'draw') return market.outcomes?.find(o => o.name === 'Draw')?.price ?? null
+  return null
+}
+
+function LineasAdmin() {
+  const [games, setGames] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [remaining, setRemaining] = useState(null)
+
+  useEffect(() => { fetchOdds() }, [])
+
+  async function fetchOdds() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(ODDS_URL)
+      const rem = res.headers.get('x-requests-remaining')
+      if (rem !== null) setRemaining(rem)
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`)
+
+      // Show games starting within the next 48 h
+      const now = new Date()
+      const cutoff = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+      const filtered = Array.isArray(data)
+        ? data.filter(g => {
+            const t = new Date(g.commence_time)
+            return t >= now && t <= cutoff
+          })
+        : []
+
+      setGames(filtered)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold">Líneas en tiempo real</h2>
+          <p className="text-white/40 text-xs mt-0.5">
+            Hoy y mañana · Bet365 vs Pinnacle · Mundial 2026
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {remaining !== null && (
+            <span className="text-xs text-white/30 bg-[#111111] border border-white/8 px-3 py-1.5 rounded-lg">
+              {remaining} requests restantes
+            </span>
+          )}
+          <button
+            onClick={fetchOdds}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-[#111111] border border-white/10 text-white/70 hover:text-white hover:border-white/25 transition-colors disabled:opacity-40"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Actualizar líneas
+          </button>
+        </div>
+      </div>
+
+      {/* States */}
+      {loading && (
+        <div className="flex items-center justify-center py-20 text-white/30 text-sm gap-2">
+          <RefreshCw size={16} className="animate-spin" /> Cargando líneas...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-5 text-red-400 text-sm">
+          Error al obtener líneas: {error}
+        </div>
+      )}
+
+      {!loading && !error && games.length === 0 && (
+        <div className="rounded-xl bg-[#111111] border border-white/8 p-12 text-center text-white/30 text-sm">
+          No hay partidos disponibles en este momento
+        </div>
+      )}
+
+      {/* Games */}
+      {!loading && !error && games.length > 0 && (
+        <div className="space-y-4">
+          {games.map(game => {
+            const bet365  = game.bookmakers?.find(b => b.key === 'bet365')
+            const pinnacle = game.bookmakers?.find(b => b.key === 'pinnacle')
+
+            const rows = [
+              { label: game.home_team,  type: 'home' },
+              { label: 'Empate',        type: 'draw' },
+              { label: game.away_team,  type: 'away' },
+            ]
+
+            return (
+              <div key={game.id} className="rounded-xl bg-[#111111] border border-white/8 overflow-hidden">
+                {/* Match header */}
+                <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold text-white">
+                      {game.home_team} <span className="text-white/30 font-normal">vs</span> {game.away_team}
+                    </div>
+                    <div className="text-xs text-white/35 mt-0.5">{fmtGameTime(game.commence_time)}</div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    {bet365  && <span className="text-[10px] px-2 py-0.5 rounded bg-[#FF6B00]/15 text-[#FF6B00] border border-[#FF6B00]/20 font-semibold">Bet365</span>}
+                    {pinnacle && <span className="text-[10px] px-2 py-0.5 rounded bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/20 font-semibold">Pinnacle</span>}
+                  </div>
+                </div>
+
+                {/* Odds table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[340px]">
+                    <thead>
+                      <tr className="border-b border-white/5">
+                        <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium w-1/2">Resultado</th>
+                        <th className="text-center px-4 py-2.5 text-xs text-[#FF6B00]/70 font-semibold">Bet365</th>
+                        <th className="text-center px-4 py-2.5 text-xs text-[#00D964]/70 font-semibold">Pinnacle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(({ label, type }, i) => {
+                        const b365 = getOutcome(bet365,  null, type, game.home_team, game.away_team)
+                        const pin  = getOutcome(pinnacle, null, type, game.home_team, game.away_team)
+                        return (
+                          <tr key={type} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? '' : 'bg-white/[0.02]'}`}>
+                            <td className="px-5 py-3 text-sm text-white/70 truncate max-w-[160px]">{label}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-sm font-mono font-semibold ${b365 != null ? (b365 > 0 ? 'text-[#00D964]' : 'text-white/80') : 'text-white/20'}`}>
+                                {fmtPrice(b365)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-sm font-mono font-semibold ${pin != null ? (pin > 0 ? 'text-[#00D964]' : 'text-white/80') : 'text-white/20'}`}>
+                                {fmtPrice(pin)}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
