@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, Users, BarChart2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
+import { useAuth } from '../context/AuthContext'
 
 /* ── TRANSLATIONS ─────────────────────────────────────────── */
 const T = {
@@ -73,6 +74,7 @@ const T = {
     planCTA: 'Empezar ahora',
     plans: [
       {
+        planId: 'starter',
         name: 'Prime Starter',
         price: '$149',
         period: 'mes',
@@ -83,6 +85,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'plus',
         name: 'Prime Plus',
         price: '$349',
         period: 'mes',
@@ -93,6 +96,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'academy',
         name: 'Prime Academy',
         price: '$599',
         period: 'mes',
@@ -103,6 +107,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'mundial',
         name: 'Mundial 2026',
         price: '$499',
         period: '',
@@ -196,6 +201,7 @@ const T = {
     planCTA: 'Get started',
     plans: [
       {
+        planId: 'starter',
         name: 'Prime Starter',
         price: '$149',
         period: 'mo',
@@ -206,6 +212,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'plus',
         name: 'Prime Plus',
         price: '$349',
         period: 'mo',
@@ -216,6 +223,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'academy',
         name: 'Prime Academy',
         price: '$599',
         period: 'mo',
@@ -226,6 +234,7 @@ const T = {
         gold: false,
       },
       {
+        planId: 'mundial',
         name: 'World Cup 2026',
         price: '$499',
         period: '',
@@ -585,7 +594,33 @@ export default function Landing() {
 
 /* ── PLAN CARD ── */
 function PlanCard({ plan, t }) {
-  const { name, price, period, one_time, desc, features, highlight, gold } = plan
+  const { planId, name, price, period, one_time, desc, features, highlight, gold } = plan
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+
+  async function handleCheckout() {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, userEmail: user.email }),
+      })
+      const data = await res.json()
+      if (data.init_point) {
+        window.location.href = data.init_point
+      }
+    } catch {
+      // Network error — silently restore button
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const borderClass = highlight
     ? 'border-[#00D964]/50'
@@ -610,8 +645,6 @@ function PlanCard({ plan, t }) {
     : gold
       ? 'bg-[#EF9F27] text-black hover:bg-[#D4891A]'
       : 'border border-[#00D964]/40 text-[#00D964] hover:bg-[#00D964]/8'
-
-  const badge = highlight ? t.popular : gold ? (t.plans.find(p => p.gold)?.name || name) : null
 
   return (
     <div className={`relative rounded-2xl ${bgClass} border ${borderClass} p-6 flex flex-col`}>
@@ -648,9 +681,13 @@ function PlanCard({ plan, t }) {
         ))}
       </ul>
 
-      <Link to="/login" className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-colors ${ctaClass}`}>
-        {t.planCTA}
-      </Link>
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-colors ${ctaClass} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+      >
+        {loading ? '...' : t.planCTA}
+      </button>
     </div>
   )
 }
