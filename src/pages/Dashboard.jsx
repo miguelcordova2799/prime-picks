@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Stars from '../components/Stars'
-import { Lock, TrendingUp, Trophy, Target, ChevronRight } from 'lucide-react'
+import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download } from 'lucide-react'
 import { formatOdds } from '../lib/odds'
 
 const RESULT_STYLES = {
@@ -147,24 +147,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 function PickCard({ pick, isSubscribed }) {
   const locked = !isSubscribed
-  const [copied, setCopied] = useState(false)
-
-  function handleShare() {
-    const stars = '⭐'.repeat(pick.stars || 3)
-    const text = [
-      '✅ PICK GANADO — Prime Picks',
-      `⚽ ${pick.match_name}`,
-      `🎯 Pick: ${pick.pick_text}`,
-      `📈 Cuota: ${formatOdds(pick.odds)} | Edge: +${pick.edge}%`,
-      stars,
-      '🔥 Seguimos sumando. Únete en primepicks.mx',
-    ].join('\n')
-
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 3000)
-    })
-  }
+  const [showShare, setShowShare] = useState(false)
 
   // Locked: show only match name + upsell, hide all pick details
   if (locked) {
@@ -189,56 +172,233 @@ function PickCard({ pick, isSubscribed }) {
   }
 
   return (
-    <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
-      <div className="p-4 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
-          <div className="font-bold text-white truncate">{pick.match_name}</div>
+    <>
+      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
+        <div className="p-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
+            <div className="font-bold text-white truncate">{pick.match_name}</div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Stars count={pick.stars} />
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${RESULT_STYLES[pick.result] || RESULT_STYLES.pending}`}>
+              {RESULT_LABELS[pick.result] || 'Pendiente'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Stars count={pick.stars} />
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${RESULT_STYLES[pick.result] || RESULT_STYLES.pending}`}>
-            {RESULT_LABELS[pick.result] || 'Pendiente'}
-          </span>
+
+        <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
+          <div>
+            <div className="text-xs text-white/35 mb-1">Pick</div>
+            <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/35 mb-1">Cuota</div>
+            <div className="text-sm font-semibold text-white/80">{formatOdds(pick.odds)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/35 mb-1">Edge</div>
+            <div className="text-sm font-semibold text-[#00D964]">+{pick.edge}%</div>
+          </div>
         </div>
+
+        <div className="px-4 pb-4">
+          <div className="text-xs text-white/35 mb-2">Análisis</div>
+          <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
+        </div>
+
+        {pick.result === 'won' && (
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => setShowShare(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D964]/15 border border-[#00D964]/30 text-[#00D964] text-xs font-semibold hover:bg-[#00D964]/25 transition-colors"
+            >
+              📸 Compartir
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
-        <div>
-          <div className="text-xs text-white/35 mb-1">Pick</div>
-          <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
-        </div>
-        <div>
-          <div className="text-xs text-white/35 mb-1">Cuota</div>
-          <div className="text-sm font-semibold text-white/80">{formatOdds(pick.odds)}</div>
-        </div>
-        <div>
-          <div className="text-xs text-white/35 mb-1">Edge</div>
-          <div className="text-sm font-semibold text-[#00D964]">+{pick.edge}%</div>
-        </div>
-      </div>
+      {showShare && <ShareModal pick={pick} onClose={() => setShowShare(false)} />}
+    </>
+  )
+}
 
-      <div className="px-4 pb-4">
-        <div className="text-xs text-white/35 mb-2">Análisis</div>
-        <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-      </div>
+/* ── SHARE MODAL ───────────────────────────────────────────── */
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(' ')
+  const lines = []
+  let line = words[0]
+  for (let i = 1; i < words.length; i++) {
+    const test = `${line} ${words[i]}`
+    if (ctx.measureText(test).width > maxWidth) {
+      lines.push(line)
+      line = words[i]
+    } else {
+      line = test
+    }
+  }
+  lines.push(line)
+  return lines
+}
 
-      {pick.result === 'won' && (
-        <div className="px-4 pb-4 relative">
+function ShareModal({ pick, onClose }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const W = 1080
+    const H = 1920
+    canvas.width = W
+    canvas.height = H
+
+    // Background
+    ctx.fillStyle = '#0A0A0A'
+    ctx.fillRect(0, 0, W, H)
+
+    // Green gradient top
+    const grad = ctx.createLinearGradient(0, 0, 0, H * 0.45)
+    grad.addColorStop(0, 'rgba(0,217,100,0.18)')
+    grad.addColorStop(1, 'rgba(0,217,100,0)')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, W, H)
+
+    const font = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
+    const img = new window.Image()
+    img.onload = () => {
+      let y = 220
+      const CX = W / 2
+
+      // Logo centered
+      const logoW = 380
+      const logoH = Math.round((img.height / img.width) * logoW)
+      ctx.drawImage(img, CX - logoW / 2, y, logoW, logoH)
+      y += logoH + 90
+
+      // Green divider
+      ctx.strokeStyle = '#00D964'
+      ctx.lineWidth = 5
+      ctx.beginPath()
+      ctx.moveTo(W * 0.15, y)
+      ctx.lineTo(W * 0.85, y)
+      ctx.stroke()
+      y += 100
+
+      // ✅ PICK GANADO
+      ctx.fillStyle = '#00D964'
+      ctx.font = `bold 120px ${font}`
+      ctx.textAlign = 'center'
+      ctx.fillText('✅ PICK GANADO', CX, y)
+      y += 160
+
+      // Match name (wrapped)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = `bold 80px ${font}`
+      const matchLines = wrapText(ctx, pick.match_name, W * 0.82)
+      matchLines.forEach(line => {
+        ctx.fillText(line, CX, y)
+        y += 105
+      })
+      y += 50
+
+      // Pick text
+      ctx.fillStyle = 'rgba(255,255,255,0.72)'
+      ctx.font = `600 65px ${font}`
+      ctx.fillText(`Pick: ${pick.pick_text}`, CX, y)
+      y += 100
+
+      // Cuota / Edge
+      ctx.fillStyle = '#00D964'
+      ctx.font = `bold 65px ${font}`
+      ctx.fillText(`Cuota: ${formatOdds(pick.odds)} | Edge: +${pick.edge}%`, CX, y)
+      y += 110
+
+      // Stars (solid gold ★)
+      ctx.fillStyle = '#EF9F27'
+      ctx.font = `bold 90px ${font}`
+      ctx.fillText('★'.repeat(pick.stars || 3), CX, y)
+      y += 120
+
+      // Light divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(W * 0.15, y)
+      ctx.lineTo(W * 0.85, y)
+      ctx.stroke()
+      y += 100
+
+      // primepicks.mx
+      ctx.fillStyle = '#00D964'
+      ctx.font = `bold 70px ${font}`
+      ctx.fillText('primepicks.mx', CX, y)
+      y += 80
+
+      // Tagline
+      ctx.fillStyle = 'rgba(255,255,255,0.38)'
+      ctx.font = `50px ${font}`
+      ctx.fillText('Picks deportivos con análisis real', CX, y)
+    }
+
+    img.src = '/logo.png'
+  }, [pick])
+
+  function handleDownload() {
+    const canvas = canvasRef.current
+    const link = document.createElement('a')
+    link.download = 'primepicks-ganado.png'
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#111111] border border-white/10 rounded-2xl p-5 w-full max-w-sm"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm font-bold text-white">Story para Instagram</div>
           <button
-            onClick={handleShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D964]/15 border border-[#00D964]/30 text-[#00D964] text-xs font-semibold hover:bg-[#00D964]/25 transition-colors"
+            onClick={onClose}
+            className="text-white/40 hover:text-white transition-colors"
           >
-            📸 Compartir
+            <X size={18} />
           </button>
-          {copied && (
-            <div className="absolute left-4 bottom-full mb-2 px-3 py-2 bg-[#00D964] text-black text-xs font-semibold rounded-lg shadow-lg whitespace-nowrap">
-              ¡Copiado! Pégalo en tu historia de Instagram
-              <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#00D964]" />
-            </div>
-          )}
         </div>
-      )}
+
+        {/* Canvas preview — 1080×1920 displayed at 324×576 (30%) */}
+        <div className="flex justify-center mb-4">
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: '324px',
+              height: '576px',
+              borderRadius: '12px',
+              display: 'block',
+            }}
+          />
+        </div>
+
+        {/* Actions */}
+        <button
+          onClick={handleDownload}
+          className="w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors flex items-center justify-center gap-2"
+        >
+          <Download size={16} />
+          Descargar imagen
+        </button>
+        <p className="text-center text-xs text-white/30 mt-3">
+          Imagen 1080×1920 px lista para Instagram Stories
+        </p>
+      </div>
     </div>
   )
 }
