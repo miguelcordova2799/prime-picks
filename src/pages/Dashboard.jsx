@@ -346,12 +346,18 @@ function ShareModal({ pick, onClose }) {
     img.src = '/logo.png'
   }, [pick])
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
   function handleDownload() {
     const canvas = canvasRef.current
-    const link = document.createElement('a')
-    link.download = 'primepicks-ganado.png'
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+    if (isIOS) {
+      window.open(canvas.toDataURL('image/png'), '_blank')
+    } else {
+      const link = document.createElement('a')
+      link.download = 'primepicks-ganado.png'
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    }
   }
 
   return (
@@ -392,11 +398,16 @@ function ShareModal({ pick, onClose }) {
           onClick={handleDownload}
           className="w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors flex items-center justify-center gap-2"
         >
-          <Download size={16} />
-          Descargar imagen
+          {isIOS ? (
+            '📱 Ver imagen — mantén presionada para guardar'
+          ) : (
+            <><Download size={16} /> Descargar imagen</>
+          )}
         </button>
         <p className="text-center text-xs text-white/30 mt-3">
-          Imagen 1080×1920 px lista para Instagram Stories
+          {isIOS
+            ? "Mantén presionada la imagen y toca 'Añadir a Fotos'"
+            : 'Imagen 1080×1920 px lista para Instagram Stories'}
         </p>
       </div>
     </div>
