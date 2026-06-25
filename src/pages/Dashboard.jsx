@@ -13,15 +13,27 @@ const RESULT_STYLES = {
 }
 const RESULT_LABELS = { pending: 'Pendiente', won: 'Ganado ✓', lost: 'Perdido ✗' }
 
+// Format a UTC ISO string to CDMX local time: "24 jun · 7:00 PM"
+function fmtCDMX(iso) {
+  const d = new Date(iso)
+  const tz = 'America/Mexico_City'
+  const day = d.toLocaleDateString('es-MX', { timeZone: tz, day: 'numeric', month: 'short' })
+    .replace(' de ', ' ').replace('.', '')
+  const time = d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true })
+  return `${day} · ${time}`
+}
+
 export default function Dashboard() {
   const { isSubscribed } = useAuth()
   const [picks, setPicks] = useState([])
+  const [history, setHistory] = useState([])
   const [stats, setStats] = useState({ wins: 0, losses: 0, roi: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchPicks()
     fetchStats()
+    fetchHistory()
   }, [])
 
   async function fetchPicks() {
@@ -35,11 +47,17 @@ export default function Dashboard() {
   }
 
   async function fetchStats() {
-    const { data } = await supabase
-      .from('stats')
-      .select('*')
-      .single()
+    const { data } = await supabase.from('stats').select('*').single()
     if (data) setStats(data)
+  }
+
+  async function fetchHistory() {
+    const { data } = await supabase
+      .from('picks')
+      .select('id, match_name, pick_text, odds, result, published_at')
+      .in('result', ['won', 'lost'])
+      .order('published_at', { ascending: false })
+    setHistory(data || [])
   }
 
   if (loading) return (
@@ -109,6 +127,10 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* History table */}
+        <HistoryTable history={history} isSubscribed={isSubscribed} />
+
       </div>
     </div>
   )
@@ -126,8 +148,6 @@ function StatCard({ icon: Icon, label, value, color }) {
 function PickCard({ pick, isSubscribed }) {
   const locked = !isSubscribed
   const [copied, setCopied] = useState(false)
-  const date = new Date(pick.published_at)
-  const formattedDate = date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
   function handleShare() {
     const stars = '⭐'.repeat(pick.stars || 3)
@@ -151,7 +171,7 @@ function PickCard({ pick, isSubscribed }) {
     return (
       <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
         <div className="p-4">
-          <div className="text-xs text-white/35 mb-1">{formattedDate} · {pick.bookmaker}</div>
+          <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
           <div className="font-bold text-white truncate">{pick.match_name}</div>
         </div>
         <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
@@ -172,7 +192,7 @@ function PickCard({ pick, isSubscribed }) {
     <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
       <div className="p-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-xs text-white/35 mb-1">{formattedDate} · {pick.bookmaker}</div>
+          <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
           <div className="font-bold text-white truncate">{pick.match_name}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -219,6 +239,93 @@ function PickCard({ pick, isSubscribed }) {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── HISTORY TABLE ─────────────────────────────────────────── */
+function HistoryTable({ history, isSubscribed }) {
+  if (history.length === 0) return null
+
+  const wins = history.filter(p => p.result === 'won').length
+  const losses = history.filter(p => p.result === 'lost').length
+  const rows = isSubscribed ? history : history.slice(0, 3)
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-lg font-bold">Historial de picks</h2>
+        <span className="text-sm font-mono bg-[#111111] border border-white/8 px-3 py-1 rounded-lg">
+          <span className="text-[#00D964] font-bold">{wins}</span>
+          <span className="text-white/30">-</span>
+          <span className="text-red-400 font-bold">{losses}</span>
+        </span>
+      </div>
+
+      <div className="rounded-xl border border-white/8 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px]">
+            <thead>
+              <tr className="bg-[#161616] border-b border-white/8">
+                {['Fecha', 'Partido', 'Pick', 'Cuota', 'Resultado'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs text-white/40 font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((pick, i) => {
+                const blur = !isSubscribed
+                return (
+                  <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
+                    <td className="px-4 py-3 text-xs text-white/40 whitespace-nowrap">
+                      <span className={blur ? 'blur-sm select-none' : ''}>{fmtCDMX(pick.published_at)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-white/80 max-w-[160px]">
+                      <span className={`block truncate ${blur ? 'blur-sm select-none' : ''}`}>{pick.match_name}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-white/70">
+                      <span className={blur ? 'blur-sm select-none' : ''}>{pick.pick_text}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-white/70 whitespace-nowrap">
+                      <span className={blur ? 'blur-sm select-none' : ''}>{formatOdds(pick.odds)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {blur ? (
+                        <span className="flex items-center gap-1 text-white/25 text-xs">
+                          <Lock size={11} /> Bloqueado
+                        </span>
+                      ) : (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          pick.result === 'won'
+                            ? 'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25'
+                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                        }`}>
+                          {pick.result === 'won' ? 'Ganado ✓' : 'Perdido ✗'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {!isSubscribed && (
+          <div className="px-4 py-4 bg-[#111111] border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-white/40 text-sm">
+              <Lock size={13} />
+              <span>{history.length} picks en el historial completo</span>
+            </div>
+            <Link
+              to="/#pricing"
+              className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"
+            >
+              Ver historial completo
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
