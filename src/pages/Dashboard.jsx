@@ -124,8 +124,26 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 function PickCard({ pick, isSubscribed }) {
   const locked = !isSubscribed
+  const [copied, setCopied] = useState(false)
   const date = new Date(pick.published_at)
   const formattedDate = date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+  function handleShare() {
+    const stars = '⭐'.repeat(pick.stars || 3)
+    const text = [
+      '✅ PICK GANADO — Prime Picks',
+      `⚽ ${pick.match_name}`,
+      `🎯 Pick: ${pick.pick_text}`,
+      `📈 Cuota: ${pick.odds} | Edge: +${pick.edge}%`,
+      stars,
+      '🔥 Seguimos sumando. Únete en primepicks.mx',
+    ].join('\n')
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    })
+  }
 
   return (
     <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
@@ -175,6 +193,23 @@ function PickCard({ pick, isSubscribed }) {
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
         )}
       </div>
+
+      {pick.result === 'won' && (
+        <div className="px-4 pb-4 relative">
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D964]/15 border border-[#00D964]/30 text-[#00D964] text-xs font-semibold hover:bg-[#00D964]/25 transition-colors"
+          >
+            📸 Compartir
+          </button>
+          {copied && (
+            <div className="absolute left-4 bottom-full mb-2 px-3 py-2 bg-[#00D964] text-black text-xs font-semibold rounded-lg shadow-lg whitespace-nowrap">
+              ¡Copiado! Pégalo en tu historia de Instagram
+              <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#00D964]" />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
