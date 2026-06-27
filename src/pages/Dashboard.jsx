@@ -24,11 +24,17 @@ function fmtCDMX(iso) {
 }
 
 export default function Dashboard() {
-  const { isSubscribed } = useAuth()
+  const { user, profile, isSubscribed } = useAuth()
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
   const [stats, setStats] = useState({ wins: 0, losses: 0, roi: 0, total: 0 })
   const [loading, setLoading] = useState(true)
+
+  // Free trial: track which picks have been counted this session
+  const [sessionViewedIds, setSessionViewedIds] = useState(new Set())
+  const [showTrialModal, setShowTrialModal] = useState(false)
+  const [trialModalDismissed, setTrialModalDismissed] = useState(false)
+  const dbPicksViewed = profile?.picks_viewed ?? 0
 
   useEffect(() => {
     fetchPicks()
@@ -58,6 +64,33 @@ export default function Dashboard() {
       .in('result', ['won', 'lost'])
       .order('published_at', { ascending: false })
     setHistory(data || [])
+  }
+
+  function canViewPick(pickId) {
+    if (isSubscribed) return true
+    if (sessionViewedIds.has(pickId)) return true
+    return (dbPicksViewed + sessionViewedIds.size) < 2
+  }
+
+  function handlePickView(pickId) {
+    if (isSubscribed) return
+    setSessionViewedIds(prev => {
+      if (prev.has(pickId)) return prev
+      if ((dbPicksViewed + prev.size) >= 2) return prev
+      const next = new Set(prev)
+      next.add(pickId)
+      // Persist to DB
+      if (user) {
+        supabase.from('profiles').update({ picks_viewed: dbPicksViewed + next.size }).eq('id', user.id)
+      }
+      return next
+    })
+  }
+
+  function handleTrialExhausted() {
+    if (!trialModalDismissed && !showTrialModal) {
+      setShowTrialModal(true)
+    }
   }
 
   if (loading) return (
@@ -122,7 +155,14 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {picks.map(pick => (
-                <PickCard key={pick.id} pick={pick} isSubscribed={isSubscribed} />
+                <PickCard
+                  key={pick.id}
+                  pick={pick}
+                  isSubscribed={isSubscribed}
+                  canView={canViewPick(pick.id)}
+                  onView={() => handlePickView(pick.id)}
+                  onTrialExhausted={handleTrialExhausted}
+                />
               ))}
             </div>
           )}
@@ -132,6 +172,10 @@ export default function Dashboard() {
         <HistoryTable history={history} />
 
       </div>
+
+      {showTrialModal && (
+        <TrialModal onClose={() => { setShowTrialModal(false); setTrialModalDismissed(true) }} />
+      )}
     </div>
   )
 }
@@ -145,9 +189,24 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed }) {
-  const locked = !isSubscribed
+function PickCard({ pick, isSubscribed, canView, onView, onTrialExhausted }) {
+  const locked = !canView
   const [showShare, setShowShare] = useState(false)
+
+  // Count this pick as viewed once (on mount), if it's a trial-unlocked view
+  useEffect(() => {
+    if (!isSubscribed && !locked) {
+      onView?.()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger trial-exhausted modal on first render of a locked pick for a free user
+  useEffect(() => {
+    if (locked && !isSubscribed) {
+      onTrialExhausted?.()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const stake = parseFloat(pick.stake_percent) || 2
   const utility = pick.result === 'won'
     ? stake * (parseFloat(pick.odds) - 1)
@@ -236,6 +295,40 @@ function PickCard({ pick, isSubscribed }) {
 
       {showShare && <ShareModal pick={pick} onClose={() => setShowShare(false)} />}
     </>
+  )
+}
+
+/* ── TRIAL MODAL ───────────────────────────────────────────── */
+function TrialModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#111111] border border-white/12 rounded-2xl p-8 max-w-sm w-full text-center"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-5xl mb-5">🎁</div>
+        <h2 className="text-xl font-black text-white mb-2">Tu prueba gratuita terminó</h2>
+        <p className="text-white/45 text-sm leading-relaxed mb-7">
+          Ya viste tus 2 picks de prueba. Únete a Prime Picks para acceder al análisis completo y seguir ganando.
+        </p>
+        <Link
+          to="/#pricing"
+          onClick={onClose}
+          className="block w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors mb-3"
+        >
+          Ver planes →
+        </Link>
+        <button
+          onClick={onClose}
+          className="text-sm text-white/30 hover:text-white/60 transition-colors"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
   )
 }
 

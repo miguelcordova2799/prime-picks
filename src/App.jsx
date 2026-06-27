@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Noticias from './pages/Noticias'
 import NoticiaDetalle from './pages/NoticiaDetalle'
+import Mundial from './pages/Mundial'
 
 function Layout({ children }) {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/noticias" element={<Layout><Noticias /></Layout>} />
             <Route path="/noticias/:id" element={<Layout><NoticiaDetalle /></Layout>} />
+            <Route path="/mundial" element={<Layout><Mundial /></Layout>} />
             <Route
               path="/dashboard"
               element={

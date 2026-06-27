@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, Trophy } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
@@ -32,11 +32,13 @@ export default function Admin() {
           <TabBtn active={tab === 'picks'} onClick={() => setTab('picks')} icon={Plus} label="Picks" />
           <TabBtn active={tab === 'noticias'} onClick={() => setTab('noticias')} icon={Newspaper} label="Noticias" />
           <TabBtn active={tab === 'lineas'} onClick={() => setTab('lineas')} icon={BarChart2} label="Líneas" />
+          <TabBtn active={tab === 'mundial'} onClick={() => setTab('mundial')} icon={Trophy} label="Mundial" />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
         {tab === 'noticias' && <NoticiasAdmin />}
         {tab === 'lineas' && <LineasAdmin />}
+        {tab === 'mundial' && <MundialAdmin />}
       </div>
 
       <style>{`
@@ -486,6 +488,149 @@ function AdminNewsCard({ noticia, onDelete }) {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── MUNDIAL ADMIN ───────────────────────────────────────────── */
+const ROUND_ORDER = [
+  { key: '16avos',    label: 'Dieciseisavos de Final' },
+  { key: '8avos',     label: 'Octavos de Final' },
+  { key: 'cuartos',   label: 'Cuartos de Final' },
+  { key: 'semifinal', label: 'Semifinales' },
+  { key: 'final',     label: 'Final' },
+]
+
+function MundialAdmin() {
+  const [matches, setMatches] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState({})
+  const [toast, setToast] = useState('')
+
+  useEffect(() => { fetchMatches() }, [])
+
+  async function fetchMatches() {
+    const { data } = await supabase
+      .from('mundial_bracket')
+      .select('*')
+      .order('id', { ascending: true })
+    setMatches(data || [])
+    setLoading(false)
+  }
+
+  function updateLocal(id, field, value) {
+    setMatches(ms => ms.map(m => m.id === id ? { ...m, [field]: value } : m))
+  }
+
+  async function saveMatch(match) {
+    setSaving(s => ({ ...s, [match.id]: true }))
+    const { error } = await supabase
+      .from('mundial_bracket')
+      .update({
+        equipo1:    match.equipo1   ?? null,
+        bandera1:   match.bandera1  ?? null,
+        equipo2:    match.equipo2   ?? null,
+        bandera2:   match.bandera2  ?? null,
+        resultado:  match.resultado ?? null,
+        ganador:    match.ganador   ?? null,
+        fecha:      match.fecha     ?? null,
+        sede:       match.sede      ?? null,
+      })
+      .eq('id', match.id)
+    setSaving(s => ({ ...s, [match.id]: false }))
+    setToast(error ? `Error: ${error.message}` : 'Guardado ✓')
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-16 text-white/30 text-sm">
+      Cargando bracket...
+    </div>
+  )
+
+  const byRound = key => matches.filter(m => m.ronda === key)
+
+  return (
+    <div>
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-[#00D964] text-black text-sm font-semibold rounded-lg shadow-xl">
+          {toast}
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <Trophy size={18} className="text-[#EF9F27]" /> Bracket del Mundial 2026
+        </h2>
+        <p className="text-white/40 text-xs mt-0.5">Edita resultados, equipos y avances de cada llave</p>
+      </div>
+
+      {matches.length === 0 && (
+        <div className="text-center py-16 text-white/30 text-sm border border-white/8 rounded-xl">
+          No hay partidos en la tabla mundial_bracket todavía
+        </div>
+      )}
+
+      <div className="space-y-10">
+        {ROUND_ORDER.map(({ key, label }) => {
+          const roundMatches = byRound(key)
+          if (roundMatches.length === 0) return null
+          return (
+            <div key={key}>
+              <h3 className="text-base font-bold mb-4 flex items-center gap-2">
+                <span className="w-1 h-5 bg-[#00D964] rounded-full" />
+                {label}
+              </h3>
+              <div className="grid lg:grid-cols-2 gap-4">
+                {roundMatches.map(match => (
+                  <div key={match.id} className="bg-[#111111] border border-white/8 rounded-xl p-4 space-y-3">
+                    <div className="text-xs text-white/25 font-mono">ID #{match.id}</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Bandera 1 (emoji)">
+                        <input value={match.bandera1 || ''} onChange={e => updateLocal(match.id, 'bandera1', e.target.value)} placeholder="🇦🇷" className="input-style" />
+                      </Field>
+                      <Field label="Equipo 1">
+                        <input value={match.equipo1 || ''} onChange={e => updateLocal(match.id, 'equipo1', e.target.value)} placeholder="Argentina" className="input-style" />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Bandera 2 (emoji)">
+                        <input value={match.bandera2 || ''} onChange={e => updateLocal(match.id, 'bandera2', e.target.value)} placeholder="🇫🇷" className="input-style" />
+                      </Field>
+                      <Field label="Equipo 2">
+                        <input value={match.equipo2 || ''} onChange={e => updateLocal(match.id, 'equipo2', e.target.value)} placeholder="Francia" className="input-style" />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Resultado">
+                        <input value={match.resultado || ''} onChange={e => updateLocal(match.id, 'resultado', e.target.value)} placeholder="Por definir · 2-1" className="input-style" />
+                      </Field>
+                      <Field label="Ganador (avanza)">
+                        <input value={match.ganador || ''} onChange={e => updateLocal(match.id, 'ganador', e.target.value)} placeholder="Argentina" className="input-style" />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Fecha (ISO o texto)">
+                        <input value={match.fecha || ''} onChange={e => updateLocal(match.id, 'fecha', e.target.value)} placeholder="2026-06-28T20:00:00" className="input-style" />
+                      </Field>
+                      <Field label="Sede">
+                        <input value={match.sede || ''} onChange={e => updateLocal(match.id, 'sede', e.target.value)} placeholder="Estadio Azteca, CDMX" className="input-style" />
+                      </Field>
+                    </div>
+                    <button
+                      onClick={() => saveMatch(match)}
+                      disabled={saving[match.id]}
+                      className="w-full py-2 bg-[#00D964]/12 border border-[#00D964]/25 text-[#00D964] text-sm font-semibold rounded-lg hover:bg-[#00D964]/22 transition-colors disabled:opacity-40"
+                    >
+                      {saving[match.id] ? 'Guardando...' : '💾 Guardar'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
