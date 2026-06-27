@@ -20,13 +20,13 @@ const T = {
     aboutTitle: '¿Quiénes somos?',
     aboutText: 'Prime Picks nació con una misión clara: hacer que apostar sea rentable, inteligente y responsable. No somos adivinos ni vendemos sueños — somos analistas que usan estadística, probabilidad y datos reales para encontrar ventaja real contra las casas de apuestas. Cada pick que publicamos tiene un fundamento matemático detrás: edge detectado, probabilidad calculada y comparación de momios entre múltiples casas. Nuestra única misión es que conviertas las apuestas en un hobby rentable, no en una adicción. Apostamos por el juego responsable, la transparencia total en nuestros resultados y la educación como herramienta principal. Aquí no ganarás siempre — pero aprenderás a apostar mejor que el 99% de la gente.',
     aboutStat1: 'Porcentaje de acierto',
-    aboutStat2: 'Retorno sobre inversión',
+    aboutStat2: 'Utilidad acumulada en % del bank',
     aboutStat3: 'Picks analizados',
 
     // Stats bar
     stats: [
       { label: 'Acierto', sub: 'Últimos 90 días' },
-      { label: 'ROI', sub: 'Retorno sobre inversión' },
+      { label: 'Utilidad', sub: 'Beneficio en % del bank' },
       { label: 'Picks', sub: 'Picks analizados' },
       { label: 'Racha actual', sub: 'Picks consecutivos' },
     ],
@@ -58,7 +58,7 @@ const T = {
     pickMatch: 'Real Madrid vs Barcelona',
     pickLabel: 'Pick',
     oddsLabel: 'Cuota',
-    edgeLabel: 'Edge',
+    edgeLabel: 'Stake',
     analysisLabel: 'Análisis',
     pickValue: 'Ambos anotan',
     analysisBlur: 'El Clásico en fase de grupos de Champions presenta una dinámica ofensiva especial. Ambos equipos necesitan la victoria...',
@@ -152,12 +152,12 @@ const T = {
     aboutTitle: 'Who We Are',
     aboutText: "Prime Picks was built with one clear mission: make sports betting profitable, intelligent, and responsible. We're not fortune tellers and we don't sell dreams — we're analysts who use statistics, probability, and real data to find a genuine edge against the bookmakers. Every pick we publish has mathematical reasoning behind it: detected edge, calculated probability, and odds comparison across multiple sportsbooks. Our only mission is to help you turn betting into a profitable hobby, not an addiction. We believe in responsible gambling, full transparency in our results, and education as the primary tool. You won't win every bet here — but you'll learn to bet smarter than 99% of people.",
     aboutStat1: 'Hit rate',
-    aboutStat2: 'Return on investment',
+    aboutStat2: 'Accumulated utility in % of bankroll',
     aboutStat3: 'Picks analyzed',
 
     stats: [
       { label: 'Hit Rate', sub: 'Last 90 days' },
-      { label: 'ROI', sub: 'Return on investment' },
+      { label: 'Utility', sub: 'Profit in % of bankroll' },
       { label: 'Picks', sub: 'Picks analyzed' },
       { label: 'Current streak', sub: 'Consecutive picks' },
     ],
@@ -186,7 +186,7 @@ const T = {
     pickMatch: 'Real Madrid vs Barcelona',
     pickLabel: 'Pick',
     oddsLabel: 'Odds',
-    edgeLabel: 'Edge',
+    edgeLabel: 'Stake',
     analysisLabel: 'Analysis',
     pickValue: 'Both to score',
     analysisBlur: 'El Clásico in the Champions League group stage presents a special offensive dynamic. Both teams need the win...',
@@ -269,13 +269,13 @@ const SERVICE_ICONS = [Target, BookOpen, Newspaper, Users]
 
 /* ── LIVE STATS FROM SUPABASE ──────────────────────────────── */
 function usePickStats() {
-  const [stats, setStats] = useState({ hitRate: null, roi: null, total: null, streak: null })
+  const [stats, setStats] = useState({ hitRate: null, utility: null, total: null, streak: null })
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase
         .from('picks')
-        .select('result, odds')
+        .select('result, odds, stake_percent')
         .order('published_at', { ascending: false })
 
       if (!data || data.length === 0) return
@@ -288,10 +288,14 @@ function usePickStats() {
         ? Math.round((won.length / resolved.length) * 100)
         : null
 
-      const roiRaw = resolved.length > 0
-        ? ((won.reduce((s, p) => s + (parseFloat(p.odds) - 1), 0) - lost.length) / resolved.length) * 100
+      const utilityRaw = resolved.length > 0
+        ? won.reduce((s, p) => {
+            const st = parseFloat(p.stake_percent) || 2
+            return s + st * (parseFloat(p.odds) - 1)
+          }, 0)
+          + lost.reduce((s, p) => s - (parseFloat(p.stake_percent) || 2), 0)
         : null
-      const roi = roiRaw !== null ? Math.round(roiRaw * 10) / 10 : null
+      const utility = utilityRaw !== null ? Math.round(utilityRaw * 100) / 100 : null
 
       // Consecutive wins from most recent resolved pick
       let streak = 0
@@ -301,7 +305,7 @@ function usePickStats() {
         else break
       }
 
-      setStats({ hitRate, roi, total: data.length, streak })
+      setStats({ hitRate, utility, total: data.length, streak })
     }
     load()
   }, [])
@@ -321,14 +325,14 @@ export default function Landing() {
     return () => window.removeEventListener('pp:langchange', handler)
   }, [])
 
-  const { hitRate, roi, total, streak } = usePickStats()
+  const { hitRate, utility, total, streak } = usePickStats()
 
-  const fmtHit    = hitRate !== null ? `${hitRate}%`                        : '—'
-  const fmtRoi    = roi     !== null ? `${roi >= 0 ? '+' : ''}${roi}%`     : '—'
-  const fmtTotal  = total   !== null && total > 0 ? `${total}`              : '—'
-  const fmtStreak = streak  > 0 ? `${streak}W`                              : '—'
+  const fmtHit     = hitRate  !== null ? `${hitRate}%`                                             : '—'
+  const fmtUtility = utility  !== null ? `${utility >= 0 ? '+' : ''}${utility.toFixed(2)}%`       : '—'
+  const fmtTotal   = total    !== null && total > 0 ? `${total}`                                   : '—'
+  const fmtStreak  = streak   > 0 ? `${streak}W`                                                  : '—'
 
-  const STAT_LIVE = [fmtHit, fmtRoi, fmtTotal, fmtStreak]
+  const STAT_LIVE = [fmtHit, fmtUtility, fmtTotal, fmtStreak]
 
   const t = T[lang]
 
@@ -386,7 +390,7 @@ export default function Landing() {
                 <div className="text-sm text-white/40 mt-1">{t.aboutStat1}</div>
               </div>
               <div className="border-t border-white/8 py-6">
-                <div className="text-5xl font-black text-[#00D964]">{fmtRoi}</div>
+                <div className="text-5xl font-black text-[#00D964]">{fmtUtility}</div>
                 <div className="text-sm text-white/40 mt-1">{t.aboutStat2}</div>
               </div>
               <div className="border-t border-white/8 pt-6">
@@ -509,7 +513,7 @@ export default function Landing() {
             </div>
             <div>
               <div className="text-xs text-white/40 mb-1">{t.edgeLabel}</div>
-              <div className="text-sm font-bold text-[#00D964]">+12.4%</div>
+              <div className="text-sm font-bold text-[#00D964]">2% del bank</div>
             </div>
           </div>
           <div className="p-5 relative">

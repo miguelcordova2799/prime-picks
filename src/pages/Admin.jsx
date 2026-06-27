@@ -5,7 +5,7 @@ import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Uplo
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
-  match_name: '', pick_text: '', odds: '', bookmaker: '', edge: '',
+  match_name: '', pick_text: '', odds: '', bookmaker: '', stake_percent: 2,
   stars: 3, analysis: '', scheduled_at: '',
 }
 
@@ -110,7 +110,7 @@ function PicksAdmin() {
       pick_text: form.pick_text,
       odds: decimalOdds,
       bookmaker: form.bookmaker,
-      edge: parseFloat(form.edge) || 0,
+      stake_percent: parseFloat(form.stake_percent) || 2,
       stars: parseInt(form.stars),
       analysis: form.analysis,
       result: 'pending',
@@ -159,8 +159,18 @@ function PicksAdmin() {
               <Field label="Casa de apuestas">
                 <input value={form.bookmaker} onChange={e => field('bookmaker', e.target.value)} placeholder="Bet365" className="input-style" />
               </Field>
-              <Field label="Edge (%)">
-                <input type="number" step="0.1" value={form.edge} onChange={e => field('edge', e.target.value)} placeholder="12.4" className="input-style" />
+              <Field label="Stake % del bank">
+                <div className="flex gap-2">
+                  {[1, 2, 3].map(n => (
+                    <button key={n} type="button" onClick={() => field('stake_percent', n)}
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-colors ${
+                        form.stake_percent === n
+                          ? 'bg-[#00D964]/20 border-[#00D964]/60 text-[#00D964]'
+                          : 'border-white/10 text-white/40 hover:border-white/20'
+                      }`}
+                    >{n}%</button>
+                  ))}
+                </div>
               </Field>
             </div>
             <Field label="Confianza (estrellas)">
