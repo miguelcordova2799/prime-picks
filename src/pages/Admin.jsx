@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import Stars from '../components/Stars'
 import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', stake_percent: 2,
-  stars: 3, analysis: '', scheduled_at: '',
+  analysis: '', scheduled_at: '',
 }
 
 const EMPTY_NEWS = {
@@ -112,7 +111,6 @@ function PicksAdmin() {
       odds:         pick.odds        != null ? String(pick.odds) : '',
       bookmaker:    pick.bookmaker   || '',
       stake_percent: parseFloat(pick.stake_percent) || 2,
-      stars:        pick.stars       || 3,
       analysis:     pick.analysis    || '',
       result:       pick.result      || 'pending',
       scheduled_at: pick.published_at
@@ -139,7 +137,7 @@ function PicksAdmin() {
         odds:          decimalOdds,
         bookmaker:     form.bookmaker,
         stake_percent: parseFloat(form.stake_percent) || 2,
-        stars:         parseInt(form.stars),
+
         analysis:      form.analysis,
         result:        form.result || 'pending',
         published_at:  form.scheduled_at || editingPick.published_at,
@@ -154,7 +152,7 @@ function PicksAdmin() {
         odds:          decimalOdds,
         bookmaker:     form.bookmaker,
         stake_percent: parseFloat(form.stake_percent) || 2,
-        stars:         parseInt(form.stars),
+
         analysis:      form.analysis,
         result:        'pending',
         published_at:  form.scheduled_at || new Date().toISOString(),
@@ -216,32 +214,9 @@ function PicksAdmin() {
                 <input value={form.bookmaker} onChange={e => field('bookmaker', e.target.value)} placeholder="Bet365" className="input-style" />
               </Field>
               <Field label="Stake % del bank">
-                <div className="flex gap-2">
-                  {[1, 2, 3].map(n => (
-                    <button key={n} type="button" onClick={() => field('stake_percent', n)}
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-colors ${
-                        form.stake_percent === n
-                          ? 'bg-[#00D964]/20 border-[#00D964]/60 text-[#00D964]'
-                          : 'border-white/10 text-white/40 hover:border-white/20'
-                      }`}
-                    >{n}%</button>
-                  ))}
-                </div>
+                <input type="number" min="0.5" max="5" step="0.5" value={form.stake_percent} onChange={e => field('stake_percent', e.target.value)} placeholder="2" className="input-style" />
               </Field>
             </div>
-            <Field label="Confianza (estrellas)">
-              <div className="flex gap-2">
-                {[1, 2, 3].map(n => (
-                  <button key={n} type="button" onClick={() => field('stars', n)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      form.stars === n
-                        ? 'bg-[#EF9F27]/20 border-[#EF9F27]/60 text-[#EF9F27]'
-                        : 'border-white/10 text-white/40 hover:border-white/20'
-                    }`}
-                  >{'★'.repeat(n)}</button>
-                ))}
-              </div>
-            </Field>
             <Field label="Análisis">
               <textarea value={form.analysis} onChange={e => field('analysis', e.target.value)} rows={4} placeholder="Razonamiento detrás del pick..." className="input-style resize-none" />
             </Field>
@@ -315,7 +290,6 @@ function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
           <div className="text-xs text-white/50 mt-0.5">{pick.pick_text} · {formatOdds(pick.odds)}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Stars count={pick.stars} />
           <span className={`text-xs px-2 py-0.5 rounded-full ${resultStyles[pick.result] || resultStyles.pending}`}>
             {resultLabels[pick.result] || 'Pendiente'}
           </span>

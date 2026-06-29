@@ -493,14 +493,9 @@ export default function Landing() {
         </div>
 
         <div className="max-w-lg mx-auto rounded-2xl bg-[#111111] border border-white/10 overflow-hidden">
-          <div className="p-5 border-b border-white/8 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-white/40 mb-1">{t.pickDate}</div>
-              <div className="font-bold text-white">{t.pickMatch}</div>
-            </div>
-            <div className="flex gap-0.5">
-              {[1,2,3].map(i => <Star key={i} size={13} className="fill-[#EF9F27] text-[#EF9F27]" />)}
-            </div>
+          <div className="p-5 border-b border-white/8">
+            <div className="text-xs text-white/40 mb-1">{t.pickDate}</div>
+            <div className="font-bold text-white">{t.pickMatch}</div>
           </div>
           <div className="p-5 grid grid-cols-3 gap-4 border-b border-white/8 text-center">
             <div>

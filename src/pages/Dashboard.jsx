@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import Stars from '../components/Stars'
 import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download } from 'lucide-react'
 import { formatOdds } from '../lib/odds'
 
@@ -253,7 +252,6 @@ function PickCard({ pick, isSubscribed, picksViewed, onView, onTrialExhausted })
             <div className="font-bold text-white truncate">{pick.match_name}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Stars count={pick.stars} />
             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${RESULT_STYLES[pick.result] || RESULT_STYLES.pending}`}>
               {RESULT_LABELS[pick.result] || 'Pendiente'}
             </span>
