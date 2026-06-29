@@ -31,12 +31,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   // Free trial
-  const [viewedPickIds, setViewedPickIds] = useState(new Set())
+  const [picksViewed, setPicksViewed] = useState(profile?.picks_viewed ?? 0)
   const [showTrialModal, setShowTrialModal] = useState(false)
   const [trialModalDismissed, setTrialModalDismissed] = useState(false)
-  // Ref for synchronous access inside mount effects (avoids stale closure)
-  const picksViewedRef = useRef(profile?.picks_viewed ?? 0)
-  useEffect(() => { picksViewedRef.current = profile?.picks_viewed ?? 0 }, [profile?.picks_viewed])
+  // Ref keeps count synchronous across concurrent mount effects
+  const picksViewedCountRef = useRef(profile?.picks_viewed ?? 0)
+  useEffect(() => {
+    const v = profile?.picks_viewed ?? 0
+    setPicksViewed(v)
+    picksViewedCountRef.current = v
+  }, [profile?.picks_viewed])
 
   useEffect(() => {
     fetchPicks()
@@ -80,20 +84,12 @@ export default function Dashboard() {
     setHistory(data || [])
   }
 
-  function canViewPick(pickId) {
-    if (isSubscribed) return true
-    if (viewedPickIds.has(pickId)) return true
-    return picksViewedRef.current < 2
-  }
-
-  function handlePickView(pickId) {
-    if (isSubscribed) return
-    if (viewedPickIds.has(pickId)) return
-    if (picksViewedRef.current >= 2) return
-    picksViewedRef.current += 1
-    setViewedPickIds(prev => new Set([...prev, pickId]))
+  function incrementPicksViewed() {
+    if (picksViewedCountRef.current >= 2) return
+    picksViewedCountRef.current += 1
+    setPicksViewed(picksViewedCountRef.current)
     if (user) {
-      supabase.from('profiles').update({ picks_viewed: picksViewedRef.current }).eq('id', user.id)
+      supabase.from('profiles').update({ picks_viewed: picksViewedCountRef.current }).eq('id', user.id)
     }
   }
 
@@ -169,8 +165,8 @@ export default function Dashboard() {
                   key={pick.id}
                   pick={pick}
                   isSubscribed={isSubscribed}
-                  canView={canViewPick(pick.id)}
-                  onView={() => handlePickView(pick.id)}
+                  picksViewed={picksViewed}
+                  onView={incrementPicksViewed}
                   onTrialExhausted={handleTrialExhausted}
                 />
               ))}
@@ -199,18 +195,20 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, canView, onView, onTrialExhausted }) {
-  const locked = !canView
+function PickCard({ pick, isSubscribed, picksViewed, onView, onTrialExhausted }) {
+  const locked = !isSubscribed && picksViewed >= 2
   const [showShare, setShowShare] = useState(false)
+  const hasViewedRef = useRef(false)
 
-  // Count this pick as viewed once (on mount), if it's a trial-unlocked view
+  // Call onView once on mount if unlocked (useRef prevents double-call in StrictMode)
   useEffect(() => {
-    if (!isSubscribed && !locked) {
+    if (!isSubscribed && !locked && !hasViewedRef.current) {
+      hasViewedRef.current = true
       onView?.()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Trigger trial-exhausted modal on first render of a locked pick for a free user
+  // Show trial modal when a locked pick is first seen
   useEffect(() => {
     if (locked && !isSubscribed) {
       onTrialExhausted?.()
