@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
@@ -87,6 +87,7 @@ function Field({ label, children }) {
 /* ── PICKS ADMIN ───────────────────────────────────────────── */
 function PicksAdmin() {
   const [form, setForm] = useState(EMPTY_PICK)
+  const [editingPick, setEditingPick] = useState(null) // null = creating, object = editing
   const [picks, setPicks] = useState([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -103,24 +104,72 @@ function PicksAdmin() {
 
   const field = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  async function handlePublish(e) {
+  function handleEdit(pick) {
+    setEditingPick(pick)
+    setForm({
+      match_name:   pick.match_name  || '',
+      pick_text:    pick.pick_text   || '',
+      odds:         pick.odds        != null ? String(pick.odds) : '',
+      bookmaker:    pick.bookmaker   || '',
+      stake_percent: parseFloat(pick.stake_percent) || 2,
+      stars:        pick.stars       || 3,
+      analysis:     pick.analysis    || '',
+      result:       pick.result      || 'pending',
+      scheduled_at: pick.published_at
+        ? new Date(pick.published_at).toISOString().slice(0, 16)
+        : '',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditingPick(null)
+    setForm(EMPTY_PICK)
+  }
+
+  async function handleSave(e) {
     e.preventDefault()
     setSubmitting(true)
     const decimalOdds = americanToDecimal(form.odds) ?? parseFloat(form.odds)
-    const { error } = await supabase.from('picks').insert({
-      match_name: form.match_name,
-      pick_text: form.pick_text,
-      odds: decimalOdds,
-      bookmaker: form.bookmaker,
-      stake_percent: parseFloat(form.stake_percent) || 2,
-      stars: parseInt(form.stars),
-      analysis: form.analysis,
-      result: 'pending',
-      published_at: form.scheduled_at || new Date().toISOString(),
-    })
-    setSubmitting(false)
+
+    if (editingPick) {
+      const { error } = await supabase.from('picks').update({
+        match_name:    form.match_name,
+        pick_text:     form.pick_text,
+        odds:          decimalOdds,
+        bookmaker:     form.bookmaker,
+        stake_percent: parseFloat(form.stake_percent) || 2,
+        stars:         parseInt(form.stars),
+        analysis:      form.analysis,
+        result:        form.result || 'pending',
+        published_at:  form.scheduled_at || editingPick.published_at,
+      }).eq('id', editingPick.id)
+      setSubmitting(false)
+      if (error) showToast('Error: ' + error.message)
+      else { showToast('Pick actualizado ✓'); cancelEdit(); fetchPicks() }
+    } else {
+      const { error } = await supabase.from('picks').insert({
+        match_name:    form.match_name,
+        pick_text:     form.pick_text,
+        odds:          decimalOdds,
+        bookmaker:     form.bookmaker,
+        stake_percent: parseFloat(form.stake_percent) || 2,
+        stars:         parseInt(form.stars),
+        analysis:      form.analysis,
+        result:        'pending',
+        published_at:  form.scheduled_at || new Date().toISOString(),
+      })
+      setSubmitting(false)
+      if (error) showToast('Error: ' + error.message)
+      else { showToast('Pick publicado ✓'); setForm(EMPTY_PICK); fetchPicks() }
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('¿Eliminar este pick? Esta acción no se puede deshacer.')) return
+    const { error } = await supabase.from('picks').delete().eq('id', id)
     if (error) showToast('Error: ' + error.message)
-    else { showToast('Pick publicado ✓'); setForm(EMPTY_PICK); fetchPicks() }
+    else { showToast('Pick eliminado'); setPicks(ps => ps.filter(p => p.id !== id)) }
   }
 
   async function setResult(id, result) {
@@ -133,6 +182,8 @@ function PicksAdmin() {
     setTimeout(() => setToast(''), 3000)
   }
 
+  const isEditing = !!editingPick
+
   return (
     <>
       {toast && (
@@ -143,9 +194,12 @@ function PicksAdmin() {
       <div className="grid lg:grid-cols-2 gap-8">
         <div>
           <h2 className="text-base font-bold mb-4 flex items-center gap-2">
-            <Plus size={18} className="text-[#00D964]" /> Nuevo pick
+            {isEditing
+              ? <><Edit size={18} className="text-[#EF9F27]" /> Editando pick</>
+              : <><Plus size={18} className="text-[#00D964]" /> Nuevo pick</>
+            }
           </h2>
-          <form onSubmit={handlePublish} className="space-y-4 bg-[#111111] border border-white/8 rounded-2xl p-5">
+          <form onSubmit={handleSave} className={`space-y-4 bg-[#111111] border rounded-2xl p-5 ${isEditing ? 'border-[#EF9F27]/30' : 'border-white/8'}`}>
             <Field label="Partido *">
               <input value={form.match_name} onChange={e => field('match_name', e.target.value)} required placeholder="Real Madrid vs Barcelona" className="input-style" />
             </Field>
@@ -153,8 +207,8 @@ function PicksAdmin() {
               <Field label="Pick *">
                 <input value={form.pick_text} onChange={e => field('pick_text', e.target.value)} required placeholder="Ambos anotan" className="input-style" />
               </Field>
-              <Field label="Cuota * (americano)">
-                <input type="text" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="+110 o -110" className="input-style" />
+              <Field label="Cuota * (americano o decimal)">
+                <input type="text" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="+110 o 1.91" className="input-style" />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -191,13 +245,35 @@ function PicksAdmin() {
             <Field label="Análisis">
               <textarea value={form.analysis} onChange={e => field('analysis', e.target.value)} rows={4} placeholder="Razonamiento detrás del pick..." className="input-style resize-none" />
             </Field>
-            <Field label="Fecha/hora programada (opcional)">
+            {isEditing && (
+              <Field label="Resultado">
+                <select value={form.result || 'pending'} onChange={e => field('result', e.target.value)} className="input-style">
+                  <option value="pending">Pendiente</option>
+                  <option value="won">Ganado</option>
+                  <option value="lost">Perdido</option>
+                  <option value="push">Anulado</option>
+                </select>
+              </Field>
+            )}
+            <Field label={isEditing ? 'Fecha/hora de publicación' : 'Fecha/hora programada (opcional)'}>
               <input type="datetime-local" value={form.scheduled_at} onChange={e => field('scheduled_at', e.target.value)} className="input-style" />
             </Field>
-            <button type="submit" disabled={submitting}
-              className="w-full py-3 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 text-sm">
-              {submitting ? 'Publicando...' : 'Publicar pick'}
-            </button>
+            <div className="flex gap-2">
+              <button type="submit" disabled={submitting}
+                className={`flex-1 py-3 font-bold rounded-lg transition-colors disabled:opacity-50 text-sm ${
+                  isEditing
+                    ? 'bg-[#EF9F27] text-black hover:bg-[#D4891A]'
+                    : 'bg-[#00D964] text-black hover:bg-[#00B856]'
+                }`}>
+                {submitting ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Publicar pick'}
+              </button>
+              {isEditing && (
+                <button type="button" onClick={cancelEdit}
+                  className="px-4 py-3 rounded-lg border border-white/10 text-white/50 hover:text-white hover:border-white/25 transition-colors text-sm">
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         </div>
 
@@ -209,7 +285,9 @@ function PicksAdmin() {
             ? <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" /></div>
             : picks.length === 0
               ? <div className="text-center py-12 text-white/30 text-sm">Sin picks aún</div>
-              : <div className="space-y-3">{picks.map(p => <AdminPickCard key={p.id} pick={p} onResult={setResult} />)}</div>
+              : <div className="space-y-3">{picks.map(p => (
+                  <AdminPickCard key={p.id} pick={p} onResult={setResult} onEdit={handleEdit} onDelete={handleDelete} />
+                ))}</div>
           }
         </div>
       </div>
@@ -217,15 +295,16 @@ function PicksAdmin() {
   )
 }
 
-function AdminPickCard({ pick, onResult }) {
+function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const date = new Date(pick.published_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   const resultStyles = {
     pending: 'bg-yellow-500/15 text-yellow-400',
     won: 'bg-[#00D964]/12 text-[#00D964]',
     lost: 'bg-red-500/15 text-red-400',
+    push: 'bg-white/10 text-white/40',
   }
-  const resultLabels = { pending: 'Pendiente', won: 'Ganado', lost: 'Perdido' }
+  const resultLabels = { pending: 'Pendiente', won: 'Ganado', lost: 'Perdido', push: 'Anulado' }
 
   return (
     <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
@@ -244,8 +323,8 @@ function AdminPickCard({ pick, onResult }) {
         </div>
       </div>
       {open && (
-        <div className="border-t border-white/8 p-4">
-          {pick.analysis && <p className="text-xs text-white/50 mb-4 leading-relaxed">{pick.analysis}</p>}
+        <div className="border-t border-white/8 p-4 space-y-3">
+          {pick.analysis && <p className="text-xs text-white/50 leading-relaxed">{pick.analysis}</p>}
           <div className="flex gap-2">
             {[
               { r: 'won', label: 'Ganado', Icon: CheckCircle, active: 'bg-[#00D964]/15 text-[#00D964] border-[#00D964]/30', hover: 'hover:border-[#00D964]/30 hover:text-[#00D964]' },
@@ -259,6 +338,16 @@ function AdminPickCard({ pick, onResult }) {
                 <Icon size={13} /> {label}
               </button>
             ))}
+          </div>
+          <div className="flex gap-2 pt-1 border-t border-white/6">
+            <button onClick={() => onEdit(pick)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#EF9F27] border border-[#EF9F27]/25 hover:bg-[#EF9F27]/10 transition-colors">
+              <Edit size={12} /> Editar
+            </button>
+            <button onClick={() => onDelete(pick.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors">
+              <Trash2 size={12} /> Eliminar
+            </button>
           </div>
         </div>
       )}
