@@ -67,8 +67,8 @@ export default function Mundial() {
         )}
       </div>
 
-      <div className="hidden md:block overflow-x-auto p-8">
-        <div style={{ minWidth: '1400px' }}>
+      <div className="hidden md:block p-8">
+        <div style={{ width: '100%', transform: 'scale(0.85)', transformOrigin: 'top center' }}>
           <div className="flex items-center justify-center">
             <div className="flex items-center">
               <RoundColumn label="16avos" matches={s16.slice(0, 8)} gap={8} />
@@ -115,7 +115,7 @@ function RoundColumn({ label, matches, gap }) {
 
 function ConnectorGroup({ count, flip }) {
   return (
-    <div className="flex flex-col justify-around" style={{ width: '20px', gap: '8px' }}>
+    <div className="flex flex-col justify-around" style={{ width: '20px', gap: '0' }}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} style={{
           width: '20px', height: '60px',
@@ -134,7 +134,7 @@ function MatchCard({ match, gold }) {
   const pending = !match.resultado || match.resultado === 'Por definir'
   return (
     <div style={{
-      width: '170px', backgroundColor: '#111111', flexShrink: 0,
+      width: '130px', backgroundColor: '#111111', flexShrink: 0,
       border: gold ? '1px solid #EF9F27' : isMexico ? '1px solid #00D964' : '1px solid rgba(255,255,255,0.1)',
       borderRadius: '8px', overflow: 'hidden',
     }}>
@@ -153,12 +153,12 @@ function MatchCard({ match, gold }) {
 function TeamRow({ bandera, nombre, isWinner, pending }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 8px',
+      display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 6px',
       backgroundColor: isWinner ? 'rgba(0,217,100,0.08)' : 'transparent',
     }}>
       <span style={{ fontSize: '13px' }}>{bandera || '🏳️'}</span>
       <span style={{
-        fontSize: '11px', fontWeight: isWinner ? 700 : 400, flex: 1,
+        fontSize: '10px', fontWeight: isWinner ? 700 : 400, flex: 1,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         color: pending ? 'rgba(255,255,255,0.3)' : isWinner ? '#00D964' : 'rgba(255,255,255,0.8)',
       }}>
@@ -171,7 +171,7 @@ function TeamRow({ bandera, nombre, isWinner, pending }) {
 function EmptyCard({ gold }) {
   return (
     <div style={{
-      width: '170px', height: '68px', backgroundColor: '#0D0D0D',
+      width: '130px', height: '68px', backgroundColor: '#0D0D0D',
       border: gold ? '1px dashed rgba(239,159,39,0.3)' : '1px dashed rgba(255,255,255,0.08)',
       borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
