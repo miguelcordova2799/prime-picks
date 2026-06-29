@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
@@ -32,11 +32,13 @@ export default function Admin() {
           <TabBtn active={tab === 'picks'} onClick={() => setTab('picks')} icon={Plus} label="Picks" />
           <TabBtn active={tab === 'noticias'} onClick={() => setTab('noticias')} icon={Newspaper} label="Noticias" />
           <TabBtn active={tab === 'lineas'} onClick={() => setTab('lineas')} icon={BarChart2} label="Líneas" />
+          <TabBtn active={tab === 'control'} onClick={() => setTab('control')} icon={TrendingUp} label="Control" />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
         {tab === 'noticias' && <NoticiasAdmin />}
         {tab === 'lineas' && <LineasAdmin />}
+        {tab === 'control' && <ControlAdmin />}
       </div>
 
       <style>{`
@@ -667,6 +669,202 @@ function LineasAdmin() {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── CONTROL ADMIN ───────────────────────────────────────────── */
+function decimalOdds(pick) {
+  return parseFloat(pick.odds) || 1
+}
+
+function calcUtility(pick) {
+  const stake = parseFloat(pick.stake_percent) || 2
+  if (pick.result === 'won') return stake * (decimalOdds(pick) - 1)
+  if (pick.result === 'lost') return -stake
+  return 0
+}
+
+function bestStreak(rows, result) {
+  let best = 0, cur = 0
+  for (const r of rows) {
+    if (r.result === result) { cur++; if (cur > best) best = cur }
+    else cur = 0
+  }
+  return best
+}
+
+function exportCSV(rows) {
+  const headers = ['#', 'Fecha', 'Partido', 'Pick', 'Momio', '% Bank', 'Resultado', 'Utilidad %', 'Acumulado %']
+  const lines = rows.map((r, i) => [
+    i + 1,
+    new Date(r.published_at).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' }),
+    `"${r.match_name}"`,
+    `"${r.pick_text}"`,
+    r.odds_fmt,
+    r.stake_percent,
+    r.result,
+    r.utility.toFixed(2),
+    r.accumulated.toFixed(2),
+  ].join(','))
+  const csv = [headers.join(','), ...lines].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'control-picks.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function ControlAdmin() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('picks')
+        .select('id, published_at, match_name, pick_text, odds, stake_percent, result')
+        .neq('result', 'pending')
+        .order('published_at', { ascending: true })
+      if (data) {
+        let acc = 0
+        const enriched = data.map((p, i) => {
+          const utility = calcUtility(p)
+          acc += utility
+          return {
+            ...p,
+            num: i + 1,
+            utility,
+            accumulated: acc,
+            odds_fmt: formatOdds(parseFloat(p.odds) || 1),
+          }
+        })
+        setRows(enriched)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-6 h-6 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  const total     = rows.length
+  const won       = rows.filter(r => r.result === 'won').length
+  const lost      = rows.filter(r => r.result === 'lost').length
+  const push      = rows.filter(r => r.result !== 'won' && r.result !== 'lost').length
+  const resolved  = won + lost
+  const hitRate   = resolved > 0 ? Math.round((won / resolved) * 100) : 0
+  const totalUtil = rows.reduce((s, r) => s + r.utility, 0)
+  const winStreak = bestStreak(rows, 'won')
+  const loseStreak = bestStreak(rows, 'lost')
+
+  const resultBadge = {
+    won:  { label: 'Ganada',  cls: 'bg-[#00D964]/15 text-[#00D964] border-[#00D964]/25' },
+    lost: { label: 'Perdida', cls: 'bg-red-500/15 text-red-400 border-red-500/25' },
+  }
+  function getBadge(result) {
+    return resultBadge[result] || { label: 'Anulada', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' }
+  }
+
+  return (
+    <div>
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+        {[
+          { label: 'Total picks', value: total },
+          { label: 'Ganados', value: won, color: 'text-[#00D964]' },
+          { label: 'Perdidos', value: lost, color: 'text-red-400' },
+          { label: 'Anulados', value: push, color: 'text-yellow-400' },
+          { label: '% Acierto', value: `${hitRate}%` },
+          {
+            label: 'Utilidad acumulada',
+            value: `${totalUtil >= 0 ? '+' : ''}${totalUtil.toFixed(2)}%`,
+            color: totalUtil >= 0 ? 'text-[#00D964]' : 'text-red-400',
+          },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-[#111111] border border-white/8 rounded-xl p-4 text-center">
+            <div className={`text-2xl font-black mb-1 ${color || 'text-white'}`}>{value}</div>
+            <div className="text-xs text-white/40">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div className="flex gap-4 text-xs text-white/40">
+          <span>Mejor racha: <span className="text-[#00D964] font-bold">{winStreak}W</span></span>
+          <span>Peor racha: <span className="text-red-400 font-bold">{loseStreak}L</span></span>
+        </div>
+        <button
+          onClick={() => exportCSV(rows)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-[#111111] border border-white/10 text-white/70 hover:text-white hover:border-white/25 transition-colors"
+        >
+          <Download size={14} /> Exportar CSV
+        </button>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="text-center py-16 text-white/30 text-sm border border-white/8 rounded-xl">
+          No hay picks resueltos aún
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-white/8">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b border-white/8 bg-[#111111]">
+                {['#', 'Fecha', 'Partido', 'Pick', 'Momio', '% Bank', 'Resultado', 'Utilidad %', 'Acumulado %'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs text-white/40 font-medium whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const badge = getBadge(r.result)
+                const utilColor = r.result === 'won' ? 'text-[#00D964]' : r.result === 'lost' ? 'text-red-400' : 'text-white/30'
+                const accColor  = r.accumulated >= 0 ? 'text-[#00D964]' : 'text-red-400'
+                return (
+                  <tr key={r.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
+                    <td className="px-4 py-3 text-white/30 font-mono text-xs">{r.num}</td>
+                    <td className="px-4 py-3 text-white/50 text-xs whitespace-nowrap">
+                      {new Date(r.published_at).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-3 text-white/80 max-w-[180px] truncate">{r.match_name}</td>
+                    <td className="px-4 py-3 text-white/70 max-w-[120px] truncate">{r.pick_text}</td>
+                    <td className="px-4 py-3 font-mono text-white/70 whitespace-nowrap">{r.odds_fmt}</td>
+                    <td className="px-4 py-3 text-white/60 whitespace-nowrap">{r.stake_percent}%</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td className={`px-4 py-3 font-mono font-semibold ${utilColor}`}>
+                      {r.result === 'won' ? '+' : ''}{r.utility.toFixed(2)}%
+                    </td>
+                    <td className={`px-4 py-3 font-mono font-bold ${accColor}`}>
+                      {r.accumulated >= 0 ? '+' : ''}{r.accumulated.toFixed(2)}%
+                    </td>
+                  </tr>
+                )
+              })}
+              {/* Totals row */}
+              <tr className="border-t border-white/12 bg-[#161616]">
+                <td colSpan={7} className="px-4 py-3 text-xs font-bold text-white/50">TOTAL</td>
+                <td className={`px-4 py-3 font-mono font-black ${totalUtil >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                  {totalUtil >= 0 ? '+' : ''}{totalUtil.toFixed(2)}%
+                </td>
+                <td className={`px-4 py-3 font-mono font-black ${totalUtil >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                  {totalUtil >= 0 ? '+' : ''}{totalUtil.toFixed(2)}%
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       )}
     </div>
