@@ -30,11 +30,13 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
-  // Free trial: track which picks have been counted this session
-  const [sessionViewedIds, setSessionViewedIds] = useState(new Set())
+  // Free trial
+  const [viewedPickIds, setViewedPickIds] = useState(new Set())
   const [showTrialModal, setShowTrialModal] = useState(false)
   const [trialModalDismissed, setTrialModalDismissed] = useState(false)
-  const dbPicksViewed = profile?.picks_viewed ?? 0
+  // Ref for synchronous access inside mount effects (avoids stale closure)
+  const picksViewedRef = useRef(profile?.picks_viewed ?? 0)
+  useEffect(() => { picksViewedRef.current = profile?.picks_viewed ?? 0 }, [profile?.picks_viewed])
 
   useEffect(() => {
     fetchPicks()
@@ -80,23 +82,19 @@ export default function Dashboard() {
 
   function canViewPick(pickId) {
     if (isSubscribed) return true
-    if (sessionViewedIds.has(pickId)) return true
-    return (dbPicksViewed + sessionViewedIds.size) < 2
+    if (viewedPickIds.has(pickId)) return true
+    return picksViewedRef.current < 2
   }
 
   function handlePickView(pickId) {
     if (isSubscribed) return
-    setSessionViewedIds(prev => {
-      if (prev.has(pickId)) return prev
-      if ((dbPicksViewed + prev.size) >= 2) return prev
-      const next = new Set(prev)
-      next.add(pickId)
-      // Persist to DB
-      if (user) {
-        supabase.from('profiles').update({ picks_viewed: dbPicksViewed + next.size }).eq('id', user.id)
-      }
-      return next
-    })
+    if (viewedPickIds.has(pickId)) return
+    if (picksViewedRef.current >= 2) return
+    picksViewedRef.current += 1
+    setViewedPickIds(prev => new Set([...prev, pickId]))
+    if (user) {
+      supabase.from('profiles').update({ picks_viewed: picksViewedRef.current }).eq('id', user.id)
+    }
   }
 
   function handleTrialExhausted() {
