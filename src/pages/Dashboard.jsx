@@ -27,7 +27,7 @@ export default function Dashboard() {
   const { user, profile, isSubscribed } = useAuth()
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
-  const [stats, setStats] = useState({ wins: 0, losses: 0, roi: 0, total: 0 })
+  const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
   // Free trial: track which picks have been counted this session
@@ -53,8 +53,20 @@ export default function Dashboard() {
   }
 
   async function fetchStats() {
-    const { data } = await supabase.from('stats').select('*').single()
-    if (data) setStats(data)
+    const { data } = await supabase
+      .from('picks')
+      .select('result, odds, stake_percent')
+      .neq('result', 'pending')
+    if (!data) return
+    const wins    = data.filter(p => p.result === 'won').length
+    const losses  = data.filter(p => p.result === 'lost').length
+    const utility = data.reduce((sum, p) => {
+      const stake = parseFloat(p.stake_percent) || 2
+      if (p.result === 'won')  return sum + stake * (parseFloat(p.odds) - 1)
+      if (p.result === 'lost') return sum - stake
+      return sum
+    }, 0)
+    setStats({ wins, losses, utility: Math.round(utility * 100) / 100, total: data.length })
   }
 
   async function fetchHistory() {
@@ -137,9 +149,9 @@ export default function Dashboard() {
           <StatCard icon={Target} label="Perdidos" value={stats.losses} color="text-red-400" />
           <StatCard
             icon={TrendingUp}
-            label="ROI"
-            value={`${Number(stats.roi || 0).toFixed(1)}%`}
-            color={Number(stats.roi) >= 0 ? 'text-[#00D964]' : 'text-red-400'}
+            label="Utilidad"
+            value={`${stats.utility >= 0 ? '+' : ''}${Number(stats.utility).toFixed(2)}%`}
+            color={stats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
           />
           <StatCard icon={TrendingUp} label="Total picks" value={stats.total} color="text-white/70" />
         </div>
