@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { LogoFull } from '../components/Logo'
 import { Eye, EyeOff } from 'lucide-react'
 
@@ -25,10 +26,16 @@ export default function Login() {
         const { error } = await signIn(email, password)
         if (error) throw error
         navigate('/dashboard')
-      } else {
+      } else if (mode === 'signup') {
         const { error } = await signUp(email, password)
         if (error) throw error
         setSuccess('Cuenta creada. Revisa tu email para confirmar.')
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: 'https://primepicks.mx/reset-password',
+        })
+        if (error) throw error
+        setSuccess('Te enviamos un email con instrucciones para restablecer tu contraseña.')
       }
     } catch (err) {
       setError(err.message || 'Algo salió mal')
@@ -37,6 +44,14 @@ export default function Login() {
     }
   }
 
+  function switchMode(m) {
+    setMode(m)
+    setError('')
+    setSuccess('')
+  }
+
+  const subtitles = { login: 'Accede a tus picks', signup: 'Crea tu cuenta gratis', forgot: 'Restablece tu contraseña' }
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -44,24 +59,34 @@ export default function Login() {
           <Link to="/"><LogoFull height={64} /></Link>
         </div>
         <p className="text-center text-white/40 text-sm -mt-4 mb-8">
-          {mode === 'login' ? 'Accede a tus picks' : 'Crea tu cuenta gratis'}
+          {subtitles[mode]}
         </p>
 
         <div className="bg-[#111111] border border-white/10 rounded-2xl p-6">
-          {/* Tabs */}
-          <div className="flex rounded-lg bg-[#0A0A0A] p-1 mb-6">
-            {['login', 'signup'].map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(''); setSuccess('') }}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === m ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
-                }`}
-              >
-                {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
-              </button>
-            ))}
-          </div>
+          {mode !== 'forgot' && (
+            <div className="flex rounded-lg bg-[#0A0A0A] p-1 mb-6">
+              {['login', 'signup'].map(m => (
+                <button
+                  key={m}
+                  onClick={() => switchMode(m)}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    mode === m ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
+                  }`}
+                >
+                  {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === 'forgot' && (
+            <button
+              onClick={() => switchMode('login')}
+              className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors mb-5"
+            >
+              ← Volver al login
+            </button>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -76,27 +101,29 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs text-white/50 mb-1.5">Contraseña</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
-                >
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+            {mode !== 'forgot' && (
+              <div>
+                <label className="block text-xs text-white/50 mb-1.5">Contraseña</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full px-4 py-3 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                  >
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {error && (
               <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -114,8 +141,24 @@ export default function Login() {
               disabled={loading}
               className="w-full py-3 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              {loading ? 'Cargando...' : mode === 'login' ? 'Entrar al dashboard' : 'Crear cuenta'}
+              {loading
+                ? 'Cargando...'
+                : mode === 'login'
+                  ? 'Entrar al dashboard'
+                  : mode === 'signup'
+                    ? 'Crear cuenta'
+                    : 'Enviar instrucciones'}
             </button>
+
+            {mode === 'login' && !success && (
+              <button
+                type="button"
+                onClick={() => switchMode('forgot')}
+                className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors pt-1"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
           </form>
         </div>
 
