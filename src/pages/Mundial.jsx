@@ -23,6 +23,16 @@ export default function Mundial() {
       setLoading(false)
     }
     load()
+
+    const channel = supabase
+      .channel('mundial_bracket_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'mundial_bracket' },
+        () => { load() }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const rondas = ['16avos', '8avos', 'cuartos', 'semifinal', 'final']
