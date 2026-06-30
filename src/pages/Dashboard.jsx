@@ -38,9 +38,8 @@ export default function Dashboard() {
     fetchHistory()
   }, [])
 
-  // Determine which picks are free-trial unlocked once both auth and picks data are ready.
-  // Assigning in the parent (not per-card) prevents the race where all cards mount at once
-  // and exhaust a per-card counter before the user can read anything.
+  // Read saved trial pick IDs from profile once auth + picks are ready.
+  // User manually unlocks picks via unlockPick() — nothing is auto-assigned.
   useEffect(() => {
     if (authLoading || loading) return
     if (isSubscribed) { setTrialPickIds([]); return }
@@ -48,18 +47,20 @@ export default function Dashboard() {
     const saved = profile?.trial_pick_ids
     if (saved) {
       try { setTrialPickIds(JSON.parse(saved)) } catch { setTrialPickIds([]) }
-      return
-    }
-
-    // First visit: lock in the first 2 picks as this user's permanent free trial
-    const ids = picks.slice(0, 2).map(p => p.id)
-    setTrialPickIds(ids)
-    if (user && ids.length > 0) {
-      supabase.from('profiles')
-        .update({ trial_pick_ids: JSON.stringify(ids), picks_viewed: ids.length })
-        .eq('id', user.id)
+    } else {
+      setTrialPickIds([])
     }
   }, [authLoading, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function unlockPick(pickId) {
+    const newIds = [...trialPickIds, pickId]
+    setTrialPickIds(newIds)
+    if (user) {
+      await supabase.from('profiles')
+        .update({ trial_pick_ids: JSON.stringify(newIds) })
+        .eq('id', user.id)
+    }
+  }
 
   async function fetchPicks() {
     const { data } = await supabase
@@ -155,18 +156,25 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
 
           {/* Trial status banner */}
-          {!isSubscribed && trialPickIds.length > 0 && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <p className="text-sm text-[#00D964] font-medium">
-                🎁 Estás viendo tus <span className="font-bold">2 picks gratis</span> de prueba — suscríbete para ver todos
-              </p>
-              <Link
-                to="/#pricing"
-                className="shrink-0 text-xs font-bold text-[#00D964] hover:underline whitespace-nowrap"
-              >
-                Ver plan →
-              </Link>
-            </div>
+          {!isSubscribed && (
+            trialPickIds.length < 2 ? (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
+                <p className="text-sm text-[#00D964] font-medium">
+                  🎁 Te {trialPickIds.length === 0 ? 'quedan' : 'queda'}{' '}
+                  <span className="font-bold">{2 - trialPickIds.length}</span>{' '}
+                  pick{2 - trialPickIds.length !== 1 ? 's' : ''} gratis de prueba — elige cuál desbloquear
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-[#111111] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <p className="text-sm text-white/60">
+                  ✓ Ya usaste tus 2 picks gratis — suscríbete por <span className="text-white font-semibold">$399/mes</span> para ver todos
+                </p>
+                <Link to="/#pricing" className="shrink-0 text-xs font-bold text-[#00D964] hover:underline whitespace-nowrap">
+                  Ver plan →
+                </Link>
+              </div>
+            )
           )}
 
           {picks.length === 0 ? (
@@ -182,6 +190,7 @@ export default function Dashboard() {
                   pick={pick}
                   isSubscribed={isSubscribed}
                   trialPickIds={trialPickIds}
+                  onUnlock={unlockPick}
                 />
               ))}
             </div>
@@ -206,8 +215,13 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, trialPickIds }) {
-  const locked = !isSubscribed && !trialPickIds.includes(pick.id)
+function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
+  const alreadyUnlocked = isSubscribed || trialPickIds.includes(pick.id)
+  const isPending = pick.result === 'pending'
+  const trialsLeft = 2 - trialPickIds.length
+  // Resolved picks are never unlockable via trial — value is in seeing picks before they play
+  const canUnlock = !alreadyUnlocked && isPending && trialsLeft > 0
+  const locked = !alreadyUnlocked
   const [showShare, setShowShare] = useState(false)
 
   const stake = parseFloat(pick.stake_percent) || 2
@@ -217,7 +231,6 @@ function PickCard({ pick, isSubscribed, trialPickIds }) {
     ? -stake
     : null
 
-  // Locked: show only match name + upsell, hide all pick details
   if (locked) {
     return (
       <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
@@ -227,14 +240,33 @@ function PickCard({ pick, isSubscribed, trialPickIds }) {
         </div>
         <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
           <span className="text-xl">🔒</span>
-          <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
-          <p className="text-xs text-white/40">$399 MXN/mes · Cancela cuando quieras</p>
-          <Link
-            to="/#pricing"
-            className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"
-          >
-            Ver planes
-          </Link>
+          {canUnlock ? (
+            <>
+              <p className="text-sm text-white/70">Pick pendiente — puedes verlo gratis</p>
+              <button
+                onClick={() => onUnlock(pick.id)}
+                className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"
+              >
+                🔓 Desbloquear gratis (te {trialsLeft === 1 ? 'queda' : 'quedan'} {trialsLeft})
+              </button>
+            </>
+          ) : isPending ? (
+            <>
+              <p className="text-sm font-semibold text-white">Ya usaste tus 2 picks de prueba gratis</p>
+              <p className="text-xs text-white/40 mb-1">Suscríbete para ver todos los picks pendientes</p>
+              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors">
+                Ver planes
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
+              <p className="text-xs text-white/40">$399 MXN/mes · Cancela cuando quieras</p>
+              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors">
+                Ver planes
+              </Link>
+            </>
+          )}
         </div>
       </div>
     )
