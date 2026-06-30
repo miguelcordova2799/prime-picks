@@ -270,6 +270,20 @@ export default function Landing() {
   }, [])
 
   const { hitRate, utility, total, streak } = usePickStats()
+  const { user, profile, isSubscribed } = useAuth()
+  const navigate = useNavigate()
+
+  function handlePicksClick() {
+    if (!user) {
+      navigate('/login')
+    } else if (isSubscribed) {
+      navigate('/dashboard')
+    } else if ((profile?.picks_viewed ?? 0) < 2) {
+      navigate('/dashboard')
+    } else {
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   const fmtHit     = hitRate  !== null ? `${hitRate}%`                                             : '—'
   const fmtUtility = utility  !== null ? `${utility >= 0 ? '+' : ''}${utility.toFixed(2)}%`       : '—'
@@ -313,9 +327,12 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/login" className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base">
+            <button
+              onClick={handlePicksClick}
+              className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base"
+            >
               {t.heroCTA}
-            </Link>
+            </button>
             <a href="#pricing" className="px-8 py-4 border border-white/20 text-white rounded-xl hover:border-white/40 transition-colors text-base">
               {t.heroPlans}
             </a>
