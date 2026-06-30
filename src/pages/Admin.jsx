@@ -214,7 +214,7 @@ function PicksAdmin() {
                 <input value={form.bookmaker} onChange={e => field('bookmaker', e.target.value)} placeholder="Bet365" className="input-style" />
               </Field>
               <Field label="Stake % del bank">
-                <input type="number" min="0.5" max="5" step="0.5" value={form.stake_percent} onChange={e => field('stake_percent', e.target.value)} placeholder="2" className="input-style" />
+                <input type="number" min="0.5" step="0.5" value={form.stake_percent} onChange={e => field('stake_percent', e.target.value)} placeholder="2" className="input-style" />
               </Field>
             </div>
             <Field label="Análisis">
