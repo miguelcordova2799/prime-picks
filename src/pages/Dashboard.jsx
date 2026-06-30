@@ -129,7 +129,7 @@ export default function Dashboard() {
           <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-[#00D964]/12 to-[#00D964]/4 border border-[#00D964]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="font-bold text-white mb-1">Desbloquea todos los picks</div>
-              <div className="text-sm text-white/50">Desde $199 MXN/mes · Cancela cuando quieras</div>
+              <div className="text-sm text-white/50">$399 MXN/mes · Cancela cuando quieras</div>
             </div>
             <Link
               to="/#pricing"
@@ -156,6 +156,29 @@ export default function Dashboard() {
         {/* Picks list */}
         <div>
           <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
+
+          {/* Trial status banner */}
+          {!isSubscribed && picksViewed >= 2 && (
+            <div className="mb-4 px-4 py-3 rounded-xl bg-[#111111] border border-[#00D964]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-sm text-white/70">
+                🎁 Ya usaste tus 2 picks gratis — suscríbete por <span className="text-white font-semibold">$399/mes</span> para ver todo
+              </p>
+              <Link
+                to="/#pricing"
+                className="shrink-0 text-xs font-bold text-[#00D964] hover:underline whitespace-nowrap"
+              >
+                Ver plan →
+              </Link>
+            </div>
+          )}
+          {!isSubscribed && picksViewed < 2 && (
+            <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
+              <p className="text-sm text-[#00D964] font-medium">
+                🎁 Te quedan <span className="font-bold">{2 - picksViewed}</span> pick{2 - picksViewed !== 1 ? 's' : ''} gratis de prueba
+              </p>
+            </div>
+          )}
+
           {picks.length === 0 ? (
             <div className="text-center py-16 text-white/30">
               <Target size={40} className="mx-auto mb-3 opacity-30" />
@@ -236,6 +259,7 @@ function PickCard({ pick, isSubscribed, picksViewed, onView, onTrialExhausted })
         <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
           <span className="text-xl">🔒</span>
           <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
+          <p className="text-xs text-white/40">$399 MXN/mes · Cancela cuando quieras</p>
           <Link
             to="/#pricing"
             className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"

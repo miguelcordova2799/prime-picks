@@ -159,6 +159,11 @@ export default function Login() {
                 ¿Olvidaste tu contraseña?
               </button>
             )}
+            {mode === 'signup' && !success && (
+              <p className="text-center text-xs text-white/35 pt-1">
+                🎁 Al registrarte obtienes 2 picks gratis de prueba
+              </p>
+            )}
           </form>
         </div>
 
