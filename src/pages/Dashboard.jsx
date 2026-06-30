@@ -23,23 +23,25 @@ function fmtCDMX(iso) {
 }
 
 export default function Dashboard() {
-  const { user, profile, isSubscribed } = useAuth()
+  const { user, profile, loading: authLoading, isSubscribed } = useAuth()
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
   const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
-  // Free trial
-  const [picksViewed, setPicksViewed] = useState(profile?.picks_viewed ?? 0)
+  // Free trial — null means "not yet confirmed from DB" (distinct from 0 = confirmed zero views)
+  const [picksViewed, setPicksViewed] = useState(null)
   const [showTrialModal, setShowTrialModal] = useState(false)
   const [trialModalDismissed, setTrialModalDismissed] = useState(false)
-  // Ref keeps count synchronous across concurrent mount effects
-  const picksViewedCountRef = useRef(profile?.picks_viewed ?? 0)
+  const picksViewedCountRef = useRef(0)
+  // Only populate after auth is fully resolved to avoid showing unlocked content prematurely
   useEffect(() => {
-    const v = profile?.picks_viewed ?? 0
-    setPicksViewed(v)
-    picksViewedCountRef.current = v
-  }, [profile?.picks_viewed])
+    if (!authLoading) {
+      const v = profile?.picks_viewed ?? 0
+      setPicksViewed(v)
+      picksViewedCountRef.current = v
+    }
+  }, [authLoading, profile?.picks_viewed])
 
   useEffect(() => {
     fetchPicks()
@@ -98,7 +100,9 @@ export default function Dashboard() {
     }
   }
 
-  if (loading) return (
+  // Block render until BOTH picks and auth/profile are confirmed.
+  // picksViewed === null means profile hasn't been verified yet — never render PickCards in this state.
+  if (loading || authLoading || picksViewed === null) return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
     </div>
