@@ -1,8 +1,5 @@
 const PLANS = {
-  starter: { title: 'Prime Picks Starter',      unit_price: 149, currency_id: 'MXN' },
-  plus:    { title: 'Prime Picks Plus',          unit_price: 349, currency_id: 'MXN' },
-  academy: { title: 'Prime Picks Academy',       unit_price: 599, currency_id: 'MXN' },
-  mundial: { title: 'Prime Picks Mundial 2026',  unit_price: 499, currency_id: 'MXN' },
+  prime: { title: 'Prime Picks - Acceso Completo', unit_price: 399, currency_id: 'MXN' },
 }
 
 export default async function handler(req, res) {

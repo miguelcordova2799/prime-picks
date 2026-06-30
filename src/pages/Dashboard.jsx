@@ -178,7 +178,7 @@ export default function Dashboard() {
         </div>
 
         {/* History table */}
-        <HistoryTable history={history} />
+        <HistoryTable history={history} isSubscribed={isSubscribed} />
 
       </div>
 
@@ -554,7 +554,7 @@ function ShareModal({ pick, onClose }) {
 }
 
 /* ── HISTORY TABLE ─────────────────────────────────────────── */
-function HistoryTable({ history }) {
+function HistoryTable({ history, isSubscribed }) {
   if (history.length === 0) return null
 
   const wins = history.filter(p => p.result === 'won').length
@@ -572,62 +572,75 @@ function HistoryTable({ history }) {
         </span>
       </div>
 
-      <div className="rounded-xl border border-white/8 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-            <thead>
-              <tr className="bg-[#161616] border-b border-white/8">
-                {['Fecha', 'Partido', 'Pick', 'Momio', 'Stake', 'Utilidad', 'Resultado'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs text-white/40 font-semibold">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((pick, i) => {
-                const s = parseFloat(pick.stake_percent) || 2
-                const util = pick.result === 'won'
-                  ? s * (parseFloat(pick.odds) - 1)
-                  : -s
-                const utilPos = util >= 0
-                return (
-                  <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
-                    <td className="px-4 py-3 text-xs text-white/40 whitespace-nowrap">
-                      {fmtCDMX(pick.published_at)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-white/80 max-w-[160px]">
-                      <span className="block truncate">{pick.match_name}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-white/70">
-                      {pick.pick_text}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-white/70 whitespace-nowrap font-mono">
-                      {formatOdds(pick.odds)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-white/50 whitespace-nowrap">
-                      {s}%
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-sm font-semibold ${utilPos ? 'text-[#00D964]' : 'text-red-400'}`}>
-                        {utilPos ? '+' : ''}{util.toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        pick.result === 'won'
-                          ? 'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25'
-                          : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                      }`}>
-                        {pick.result === 'won' ? 'Ganado ✓' : 'Perdido ✗'}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      {!isSubscribed ? (
+        <div className="rounded-xl border border-white/10 bg-[#111111] p-10 text-center">
+          <div className="text-4xl mb-3">🔒</div>
+          <p className="text-white/80 font-semibold mb-1">Historial completo disponible solo para suscriptores Prime</p>
+          <p className="text-white/40 text-sm mb-5">Accede a todos los resultados, utilidades y estadísticas del historial.</p>
+          <a
+            href="/#pricing"
+            className="inline-block px-7 py-2.5 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors text-sm"
+          >
+            Ver planes
+          </a>
         </div>
-
-      </div>
+      ) : (
+        <div className="rounded-xl border border-white/8 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="bg-[#161616] border-b border-white/8">
+                  {['Fecha', 'Partido', 'Pick', 'Momio', 'Stake', 'Utilidad', 'Resultado'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs text-white/40 font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((pick, i) => {
+                  const s = parseFloat(pick.stake_percent) || 2
+                  const util = pick.result === 'won'
+                    ? s * (parseFloat(pick.odds) - 1)
+                    : -s
+                  const utilPos = util >= 0
+                  return (
+                    <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
+                      <td className="px-4 py-3 text-xs text-white/40 whitespace-nowrap">
+                        {fmtCDMX(pick.published_at)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-white/80 max-w-[160px]">
+                        <span className="block truncate">{pick.match_name}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-white/70">
+                        {pick.pick_text}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-white/70 whitespace-nowrap font-mono">
+                        {formatOdds(pick.odds)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-white/50 whitespace-nowrap">
+                        {s}%
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-sm font-semibold ${utilPos ? 'text-[#00D964]' : 'text-red-400'}`}>
+                          {utilPos ? '+' : ''}{util.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          pick.result === 'won'
+                            ? 'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25'
+                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                        }`}>
+                          {pick.result === 'won' ? 'Ganado ✓' : 'Perdido ✗'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

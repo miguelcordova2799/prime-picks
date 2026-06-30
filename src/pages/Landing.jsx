@@ -74,48 +74,15 @@ const T = {
     planCTA: 'Empezar ahora',
     plans: [
       {
-        planId: 'starter',
-        name: 'Prime Starter',
-        price: '$149',
+        planId: 'prime',
+        name: 'Prime Picks',
+        price: '$399',
         period: 'mes',
         one_time: false,
-        desc: 'Para el apostador que está empezando. 1-2 picks semanales con análisis básico y acceso a noticias.',
-        features: ['1-2 picks semanales', 'Análisis básico', 'Acceso a noticias', 'Soporte por WhatsApp'],
-        highlight: false,
-        gold: false,
-      },
-      {
-        planId: 'plus',
-        name: 'Prime Plus',
-        price: '$349',
-        period: 'mes',
-        one_time: false,
-        desc: 'Picks diarios con análisis completo, edge detectado, alertas antes del partido y historial de ROI en tiempo real.',
-        features: ['Picks diarios', 'Análisis completo con edge', 'Alertas pre-partido', 'Historial de ROI en tiempo real', 'Soporte prioritario'],
+        desc: 'Acceso completo a todos los picks, análisis e historial.',
+        features: ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Noticias del Mundial', 'Cancela cuando quieras'],
         highlight: true,
         gold: false,
-      },
-      {
-        planId: 'academy',
-        name: 'Prime Academy',
-        price: '$599',
-        period: 'mes',
-        one_time: false,
-        desc: 'Todo lo anterior más curso completo de bankroll, guías de value betting, psicología del apostador y grupo VIP privado.',
-        features: ['Todo Prime Plus', 'Curso completo de bankroll', 'Guías de value betting', 'Psicología del apostador', 'Grupo VIP privado'],
-        highlight: false,
-        gold: false,
-      },
-      {
-        planId: 'mundial',
-        name: 'Mundial 2026',
-        price: '$499',
-        period: '',
-        one_time: true,
-        desc: 'Acceso completo durante todo el torneo. Picks de cada partido, análisis especial y cobertura exclusiva del Mundial.',
-        features: ['Picks de cada partido', 'Análisis especial del torneo', 'Cobertura exclusiva', 'Acceso por todo el Mundial'],
-        highlight: false,
-        gold: true,
       },
     ],
 
@@ -131,6 +98,11 @@ const T = {
     ctaTitle: '¿Listo para apostar mejor?',
     ctaSub: 'Únete a cientos de apostadores que ya confían en nuestro análisis.',
     ctaBtn: 'Comenzar gratis →',
+
+    // Trial banner
+    trialTitle: '🎁 Prueba 2 picks GRATIS antes de suscribirte',
+    trialSub: 'Sin tarjeta, sin compromiso. Regístrate y mira la calidad de nuestro análisis.',
+    trialCTA: 'Crear cuenta gratis',
 
     // Responsible gambling
     rgTitle: 'Juega Responsable',
@@ -201,48 +173,15 @@ const T = {
     planCTA: 'Get started',
     plans: [
       {
-        planId: 'starter',
-        name: 'Prime Starter',
-        price: '$149',
+        planId: 'prime',
+        name: 'Prime Picks',
+        price: '$399',
         period: 'mo',
         one_time: false,
-        desc: 'For the bettor just getting started. 1-2 weekly picks with basic analysis and news access.',
-        features: ['1-2 weekly picks', 'Basic analysis', 'News access', 'WhatsApp support'],
-        highlight: false,
-        gold: false,
-      },
-      {
-        planId: 'plus',
-        name: 'Prime Plus',
-        price: '$349',
-        period: 'mo',
-        one_time: false,
-        desc: 'Daily picks with full analysis, detected edge, pre-game alerts, and real-time ROI history.',
-        features: ['Daily picks', 'Full analysis with edge', 'Pre-game alerts', 'Real-time ROI history', 'Priority support'],
+        desc: 'Full access to all picks, analysis, and history.',
+        features: ['All picks with full analysis', 'Complete results history', 'Real-time statistics', 'World Cup news', 'Cancel anytime'],
         highlight: true,
         gold: false,
-      },
-      {
-        planId: 'academy',
-        name: 'Prime Academy',
-        price: '$599',
-        period: 'mo',
-        one_time: false,
-        desc: 'Everything above plus full bankroll course, value betting guides, bettor psychology, and private VIP group.',
-        features: ['Everything in Prime Plus', 'Full bankroll course', 'Value betting guides', 'Bettor psychology', 'Private VIP group'],
-        highlight: false,
-        gold: false,
-      },
-      {
-        planId: 'mundial',
-        name: 'World Cup 2026',
-        price: '$499',
-        period: '',
-        one_time: true,
-        desc: 'Full access for the entire tournament. Picks for every game, special analysis, and exclusive World Cup coverage.',
-        features: ['Picks for every game', 'Special tournament analysis', 'Exclusive coverage', 'Access all tournament long'],
-        highlight: false,
-        gold: true,
       },
     ],
 
@@ -256,6 +195,11 @@ const T = {
     ctaTitle: 'Ready to bet smarter?',
     ctaSub: 'Join hundreds of bettors who already trust our analysis.',
     ctaBtn: 'Get started free →',
+
+    // Trial banner
+    trialTitle: '🎁 Try 2 FREE picks before subscribing',
+    trialSub: 'No card, no commitment. Sign up and see the quality of our analysis.',
+    trialCTA: 'Create free account',
 
     rgTitle: 'Gamble Responsibly',
     rgText: "Betting is entertainment, not a guaranteed income source. Never bet more than you can afford to lose. If you feel gambling is affecting your life, please seek help.",
@@ -376,6 +320,23 @@ export default function Landing() {
               {t.heroPlans}
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* ── TRIAL BANNER ── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00D964]/15 via-[#00D964]/5 to-transparent pointer-events-none" />
+        <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+            <p className="text-2xl md:text-3xl font-black text-white mb-1">{t.trialTitle}</p>
+            <p className="text-white/50 text-sm md:text-base">{t.trialSub}</p>
+          </div>
+          <Link
+            to="/login"
+            className="shrink-0 px-7 py-3.5 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-sm whitespace-nowrap"
+          >
+            {t.trialCTA}
+          </Link>
         </div>
       </section>
 
@@ -534,10 +495,10 @@ export default function Landing() {
             <p className="text-white/40">{t.pricingSub}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {t.plans.map((plan) => (
-              <PlanCard key={plan.name} plan={plan} t={t} />
-            ))}
+          <div className="flex justify-center">
+            <div className="w-full max-w-md">
+              <PlanCard plan={t.plans[0]} t={t} />
+            </div>
           </div>
         </div>
       </section>
