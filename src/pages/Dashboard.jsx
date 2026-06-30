@@ -29,25 +29,37 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
-  // Free trial — null means "not yet confirmed from DB" (distinct from 0 = confirmed zero views)
-  const [picksViewed, setPicksViewed] = useState(null)
-  const [showTrialModal, setShowTrialModal] = useState(false)
-  const [trialModalDismissed, setTrialModalDismissed] = useState(false)
-  const picksViewedCountRef = useRef(0)
-  // Only populate after auth is fully resolved to avoid showing unlocked content prematurely
-  useEffect(() => {
-    if (!authLoading) {
-      const v = profile?.picks_viewed ?? 0
-      setPicksViewed(v)
-      picksViewedCountRef.current = v
-    }
-  }, [authLoading, profile?.picks_viewed])
+  // null = still determining (blocks render), [] = subscribed, [id,...] = trial picks assigned
+  const [trialPickIds, setTrialPickIds] = useState(null)
 
   useEffect(() => {
     fetchPicks()
     fetchStats()
     fetchHistory()
   }, [])
+
+  // Determine which picks are free-trial unlocked once both auth and picks data are ready.
+  // Assigning in the parent (not per-card) prevents the race where all cards mount at once
+  // and exhaust a per-card counter before the user can read anything.
+  useEffect(() => {
+    if (authLoading || loading) return
+    if (isSubscribed) { setTrialPickIds([]); return }
+
+    const saved = profile?.trial_pick_ids
+    if (saved) {
+      try { setTrialPickIds(JSON.parse(saved)) } catch { setTrialPickIds([]) }
+      return
+    }
+
+    // First visit: lock in the first 2 picks as this user's permanent free trial
+    const ids = picks.slice(0, 2).map(p => p.id)
+    setTrialPickIds(ids)
+    if (user && ids.length > 0) {
+      supabase.from('profiles')
+        .update({ trial_pick_ids: JSON.stringify(ids), picks_viewed: ids.length })
+        .eq('id', user.id)
+    }
+  }, [authLoading, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchPicks() {
     const { data } = await supabase
@@ -85,24 +97,9 @@ export default function Dashboard() {
     setHistory(data || [])
   }
 
-  function incrementPicksViewed() {
-    if (picksViewedCountRef.current >= 2) return
-    picksViewedCountRef.current += 1
-    setPicksViewed(picksViewedCountRef.current)
-    if (user) {
-      supabase.from('profiles').update({ picks_viewed: picksViewedCountRef.current }).eq('id', user.id)
-    }
-  }
-
-  function handleTrialExhausted() {
-    if (!trialModalDismissed && !showTrialModal) {
-      setShowTrialModal(true)
-    }
-  }
-
-  // Block render until BOTH picks and auth/profile are confirmed.
-  // picksViewed === null means profile hasn't been verified yet — never render PickCards in this state.
-  if (loading || authLoading || picksViewed === null) return (
+  // Block render until picks, auth, and trial assignment are all confirmed.
+  // trialPickIds === null means we haven't decided which picks are free yet.
+  if (loading || authLoading || trialPickIds === null) return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
     </div>
@@ -158,10 +155,10 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
 
           {/* Trial status banner */}
-          {!isSubscribed && picksViewed >= 2 && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-[#111111] border border-[#00D964]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <p className="text-sm text-white/70">
-                🎁 Ya usaste tus 2 picks gratis — suscríbete por <span className="text-white font-semibold">$399/mes</span> para ver todo
+          {!isSubscribed && trialPickIds.length > 0 && (
+            <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="text-sm text-[#00D964] font-medium">
+                🎁 Estás viendo tus <span className="font-bold">2 picks gratis</span> de prueba — suscríbete para ver todos
               </p>
               <Link
                 to="/#pricing"
@@ -169,13 +166,6 @@ export default function Dashboard() {
               >
                 Ver plan →
               </Link>
-            </div>
-          )}
-          {!isSubscribed && picksViewed < 2 && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
-              <p className="text-sm text-[#00D964] font-medium">
-                🎁 Te quedan <span className="font-bold">{2 - picksViewed}</span> pick{2 - picksViewed !== 1 ? 's' : ''} gratis de prueba
-              </p>
             </div>
           )}
 
@@ -191,9 +181,7 @@ export default function Dashboard() {
                   key={pick.id}
                   pick={pick}
                   isSubscribed={isSubscribed}
-                  picksViewed={picksViewed}
-                  onView={incrementPicksViewed}
-                  onTrialExhausted={handleTrialExhausted}
+                  trialPickIds={trialPickIds}
                 />
               ))}
             </div>
@@ -205,9 +193,6 @@ export default function Dashboard() {
 
       </div>
 
-      {showTrialModal && (
-        <TrialModal onClose={() => { setShowTrialModal(false); setTrialModalDismissed(true) }} />
-      )}
     </div>
   )
 }
@@ -221,25 +206,9 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, picksViewed, onView, onTrialExhausted }) {
-  const locked = !isSubscribed && picksViewed >= 2
+function PickCard({ pick, isSubscribed, trialPickIds }) {
+  const locked = !isSubscribed && !trialPickIds.includes(pick.id)
   const [showShare, setShowShare] = useState(false)
-  const hasViewedRef = useRef(false)
-
-  // Call onView once on mount if unlocked (useRef prevents double-call in StrictMode)
-  useEffect(() => {
-    if (!isSubscribed && !locked && !hasViewedRef.current) {
-      hasViewedRef.current = true
-      onView?.()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Show trial modal when a locked pick is first seen
-  useEffect(() => {
-    if (locked && !isSubscribed) {
-      onTrialExhausted?.()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stake = parseFloat(pick.stake_percent) || 2
   const utility = pick.result === 'won'
@@ -329,40 +298,6 @@ function PickCard({ pick, isSubscribed, picksViewed, onView, onTrialExhausted })
 
       {showShare && <ShareModal pick={pick} onClose={() => setShowShare(false)} />}
     </>
-  )
-}
-
-/* ── TRIAL MODAL ───────────────────────────────────────────── */
-function TrialModal({ onClose }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-[#111111] border border-white/12 rounded-2xl p-8 max-w-sm w-full text-center"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="text-5xl mb-5">🎁</div>
-        <h2 className="text-xl font-black text-white mb-2">Tu prueba gratuita terminó</h2>
-        <p className="text-white/45 text-sm leading-relaxed mb-7">
-          Ya viste tus 2 picks de prueba. Únete a Prime Picks para acceder al análisis completo y seguir ganando.
-        </p>
-        <Link
-          to="/#pricing"
-          onClick={onClose}
-          className="block w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors mb-3"
-        >
-          Ver planes →
-        </Link>
-        <button
-          onClick={onClose}
-          className="text-sm text-white/30 hover:text-white/60 transition-colors"
-        >
-          Cerrar
-        </button>
-      </div>
-    </div>
   )
 }
 
