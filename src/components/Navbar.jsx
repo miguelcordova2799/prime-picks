@@ -2,11 +2,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { LogoFull } from './Logo'
-import { LogOut, LayoutDashboard, Shield, Newspaper } from 'lucide-react'
+import { LogOut, LayoutDashboard, Shield, Newspaper, Home } from 'lucide-react'
 
 const NAV_T = {
-  es: { news: 'Noticias', picks: 'Picks', signOut: 'Salir', signIn: 'Iniciar sesión' },
-  en: { news: 'News',     picks: 'Picks', signOut: 'Sign out', signIn: 'Sign in' },
+  es: { home: 'Inicio', news: 'Noticias', picks: 'Picks', signOut: 'Salir', signIn: 'Iniciar sesión' },
+  en: { home: 'Home',   news: 'News',     picks: 'Picks', signOut: 'Sign out', signIn: 'Sign in' },
 }
 
 export default function Navbar() {
@@ -21,8 +21,8 @@ export default function Navbar() {
     navigate('/')
   }
 
-  const navLink = (to, label, Icon) => {
-    const active = location.pathname.startsWith(to)
+  const navLink = (to, label, Icon, exact = false) => {
+    const active = exact ? location.pathname === to : location.pathname.startsWith(to)
     return (
       <Link
         to={to}
@@ -44,6 +44,7 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4">
+          {navLink('/', t.home, Home, true)}
           {navLink('/noticias', t.news, Newspaper)}
 
           {user ? (
