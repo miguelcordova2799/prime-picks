@@ -23,16 +23,19 @@ export default function Contacto() {
     setSending(true)
     setError('')
 
-    const { error: err } = await supabase.from('mensajes').insert({
-      user_id: user?.id || null,
-      nombre:  form.nombre.trim() || null,
-      email:   form.email.trim()  || null,
+    const payload = {
       mensaje: form.mensaje.trim(),
-    })
+      nombre:  form.nombre.trim()  || null,
+      email:   form.email.trim()   || null,
+      user_id: user ? user.id : null,
+    }
+
+    const { error: err } = await supabase.from('mensajes').insert(payload)
 
     setSending(false)
     if (err) {
-      setError('Ocurrió un error al enviar. Intenta de nuevo.')
+      // Show the real Supabase error so it's diagnosable
+      setError(`Error (${err.code || 'unknown'}): ${err.message || JSON.stringify(err)}`)
     } else {
       setSent(true)
     }
