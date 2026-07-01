@@ -436,17 +436,17 @@ export default function Landing() {
             <p className="text-white/40 text-base max-w-lg mx-auto">{t.servicesSub}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
             {t.services.map(({ title, desc }, i) => {
               const Icon = SERVICE_ICONS[i]
               return (
-                <div key={i} className="bg-[#161616] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#00D964]/25 transition-colors">
-                  <div className="w-12 h-12 rounded-xl bg-[#00D964]/12 flex items-center justify-center">
+                <div key={i} className="h-full bg-[#161616] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#00D964]/25 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-[#00D964]/12 flex items-center justify-center shrink-0">
                     <Icon size={24} className="text-[#00D964]" />
                   </div>
-                  <div>
+                  <div className="flex flex-col flex-1">
                     <div className="font-bold text-white mb-2">{title}</div>
-                    <p className="text-sm text-white/50 leading-relaxed">{desc}</p>
+                    <p className="text-sm text-white/50 leading-relaxed flex-1">{desc}</p>
                   </div>
                 </div>
               )
