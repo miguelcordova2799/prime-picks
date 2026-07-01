@@ -10,6 +10,7 @@ import Admin from './pages/Admin'
 import Noticias from './pages/Noticias'
 import NoticiaDetalle from './pages/NoticiaDetalle'
 import ResetPassword from './pages/ResetPassword'
+import Contacto from './pages/Contacto'
 
 function Layout({ children }) {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/noticias" element={<Layout><Noticias /></Layout>} />
             <Route path="/noticias/:id" element={<Layout><NoticiaDetalle /></Layout>} />
+            <Route path="/contacto" element={<Layout><Contacto /></Layout>} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/dashboard"

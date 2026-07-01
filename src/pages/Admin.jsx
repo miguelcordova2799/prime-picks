@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', stake_percent: 2,
-  analysis: '', scheduled_at: '',
+  analysis: '', scheduled_at: '', is_free: false,
 }
 
 const EMPTY_NEWS = {
@@ -17,6 +17,12 @@ const NEWS_CATEGORIES = ['General', 'México', 'Resultados', 'Análisis', 'Selec
 
 export default function Admin() {
   const [tab, setTab] = useState('picks')
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    supabase.from('mensajes').select('id', { count: 'exact' }).eq('leido', false)
+      .then(({ count }) => setUnreadCount(count || 0))
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
@@ -27,17 +33,25 @@ export default function Admin() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-[#111111] border border-white/8 rounded-xl w-fit mb-8">
+        <div className="flex flex-wrap gap-1 p-1 bg-[#111111] border border-white/8 rounded-xl w-fit mb-8">
           <TabBtn active={tab === 'picks'} onClick={() => setTab('picks')} icon={Plus} label="Picks" />
           <TabBtn active={tab === 'noticias'} onClick={() => setTab('noticias')} icon={Newspaper} label="Noticias" />
           <TabBtn active={tab === 'lineas'} onClick={() => setTab('lineas')} icon={BarChart2} label="Líneas" />
           <TabBtn active={tab === 'control'} onClick={() => setTab('control')} icon={TrendingUp} label="Control" />
+          <TabBtn
+            active={tab === 'mensajes'}
+            onClick={() => { setTab('mensajes'); setUnreadCount(0) }}
+            icon={MessageSquare}
+            label={unreadCount > 0 ? `Mensajes (${unreadCount})` : 'Mensajes'}
+            badge={unreadCount}
+          />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
         {tab === 'noticias' && <NoticiasAdmin />}
         {tab === 'lineas' && <LineasAdmin />}
         {tab === 'control' && <ControlAdmin />}
+        {tab === 'mensajes' && <MensajesAdmin />}
       </div>
 
       <style>{`
@@ -60,16 +74,21 @@ export default function Admin() {
   )
 }
 
-function TabBtn({ active, onClick, icon: Icon, label }) {
+function TabBtn({ active, onClick, icon: Icon, label, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+      className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
         active ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
       }`}
     >
       <Icon size={15} />
       {label}
+      {badge > 0 && !active && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </button>
   )
 }
@@ -112,6 +131,7 @@ function PicksAdmin() {
       bookmaker:    pick.bookmaker   || '',
       stake_percent: parseFloat(pick.stake_percent) || 2,
       analysis:     pick.analysis    || '',
+      is_free:      pick.is_free     || false,
       result:       pick.result      || 'pending',
       scheduled_at: pick.published_at
         ? new Date(pick.published_at).toISOString().slice(0, 16)
@@ -137,8 +157,8 @@ function PicksAdmin() {
         odds:          decimalOdds,
         bookmaker:     form.bookmaker,
         stake_percent: parseFloat(form.stake_percent) || 2,
-
         analysis:      form.analysis,
+        is_free:       form.is_free,
         result:        form.result || 'pending',
         published_at:  form.scheduled_at || editingPick.published_at,
       }).eq('id', editingPick.id)
@@ -152,8 +172,8 @@ function PicksAdmin() {
         odds:          decimalOdds,
         bookmaker:     form.bookmaker,
         stake_percent: parseFloat(form.stake_percent) || 2,
-
         analysis:      form.analysis,
+        is_free:       form.is_free,
         result:        'pending',
         published_at:  form.scheduled_at || new Date().toISOString(),
       })
@@ -220,6 +240,17 @@ function PicksAdmin() {
             <Field label="Análisis">
               <textarea value={form.analysis} onChange={e => field('analysis', e.target.value)} rows={4} placeholder="Razonamiento detrás del pick..." className="input-style resize-none" />
             </Field>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div
+                onClick={() => field('is_free', !form.is_free)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${form.is_free ? 'bg-[#00D964]' : 'bg-white/15'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_free ? 'translate-x-5' : ''}`} />
+              </div>
+              <span className="text-sm text-white/70">
+                🎁 Pick gratuito <span className="text-white/35">(visible para todos sin suscripción)</span>
+              </span>
+            </label>
             {isEditing && (
               <Field label="Resultado">
                 <select value={form.result || 'pending'} onChange={e => field('result', e.target.value)} className="input-style">
@@ -933,3 +964,99 @@ function ControlAdmin() {
     </div>
   )
 }
+
+/* ── MENSAJES ADMIN ────────────────────────────────────────── */
+function MensajesAdmin() {
+  const [mensajes, setMensajes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
+
+  useEffect(() => { fetchMensajes() }, [])
+
+  async function fetchMensajes() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('mensajes')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setMensajes(data || [])
+    setLoading(false)
+  }
+
+  async function markRead(id) {
+    await supabase.from('mensajes').update({ leido: true }).eq('id', id)
+    setMensajes(ms => ms.map(m => m.id === id ? { ...m, leido: true } : m))
+  }
+
+  function handleExpand(id) {
+    setExpanded(prev => prev === id ? null : id)
+    const msg = mensajes.find(m => m.id === id)
+    if (msg && !msg.leido) markRead(id)
+  }
+
+  const unread = mensajes.filter(m => !m.leido).length
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-lg font-bold">Mensajes de contacto</h2>
+        {unread > 0 && (
+          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold">
+            {unread} nuevos
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : mensajes.length === 0 ? (
+        <div className="text-center py-16 text-white/30 text-sm">No hay mensajes aún</div>
+      ) : (
+        <div className="space-y-2">
+          {mensajes.map(m => (
+            <div
+              key={m.id}
+              className={`rounded-xl border transition-colors ${
+                !m.leido ? 'border-red-500/20 bg-red-500/5' : 'border-white/8 bg-[#111111]'
+              }`}
+            >
+              <button
+                onClick={() => handleExpand(m.id)}
+                className="w-full flex items-start justify-between gap-4 p-4 text-left"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    {!m.leido && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                        NUEVO
+                      </span>
+                    )}
+                    <span className="font-semibold text-sm text-white truncate">{m.nombre || 'Sin nombre'}</span>
+                    <span className="text-xs text-white/35 truncate">{m.email}</span>
+                  </div>
+                  <p className="text-xs text-white/50 truncate">{m.mensaje}</p>
+                </div>
+                <div className="shrink-0 text-xs text-white/30 whitespace-nowrap">
+                  {new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </button>
+
+              {expanded === m.id && (
+                <div className="px-4 pb-4 border-t border-white/8 pt-3">
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs text-white/50">
+                    <div><span className="text-white/30">Nombre:</span> {m.nombre || '—'}</div>
+                    <div><span className="text-white/30">Email:</span> {m.email || '—'}</div>
+                  </div>
+                  <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{m.mensaje}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+

@@ -216,7 +216,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
-  const alreadyUnlocked = isSubscribed || trialPickIds.includes(pick.id)
+  const alreadyUnlocked = isSubscribed || pick.is_free || trialPickIds.includes(pick.id)
   const isPending = pick.result === 'pending'
   const trialsLeft = 2 - trialPickIds.length
   // Resolved picks are never unlockable via trial — value is in seeing picks before they play

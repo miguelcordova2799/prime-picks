@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, Users, BarChart2, AlertTriangle } from 'lucide-react'
+import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, BarChart2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
 import { useAuth } from '../context/AuthContext'
@@ -48,7 +48,6 @@ const T = {
       { title: 'Picks Diarios', desc: 'Análisis estadístico de cada partido con edge detectado, cuota recomendada y stake sugerido.' },
       { title: 'Prime Academy', desc: 'Aprende a leer estadísticas, identificar value bets, manejar tu bankroll y pensar como un apostador profesional.' },
       { title: 'Noticias Deportivas', desc: 'Cobertura diaria del Mundial 2026 y las principales ligas. Información que impacta las líneas antes que nadie.' },
-      { title: 'Comunidad VIP', desc: 'Acceso a un grupo privado de apostadores serios donde se discuten estrategias, picks y oportunidades en tiempo real.' },
     ],
 
     // Pick preview
@@ -149,7 +148,6 @@ const T = {
       { title: 'Daily Picks', desc: 'Statistical analysis of every game with detected edge, recommended odds, and suggested stake.' },
       { title: 'Prime Academy', desc: 'Learn to read statistics, identify value bets, manage your bankroll, and think like a professional bettor.' },
       { title: 'Sports News', desc: 'Daily coverage of the 2026 World Cup and major leagues. Information that moves the lines before anyone else.' },
-      { title: 'VIP Community', desc: 'Access to a private group of serious bettors where strategies, picks, and opportunities are discussed in real time.' },
     ],
 
     pickPreviewTitle: 'What picks look like',
@@ -209,7 +207,7 @@ const T = {
   },
 }
 
-const SERVICE_ICONS = [Target, BookOpen, Newspaper, Users]
+const SERVICE_ICONS = [Target, BookOpen, Newspaper]
 
 /* ── LIVE STATS FROM SUPABASE ──────────────────────────────── */
 function usePickStats() {

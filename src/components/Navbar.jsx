@@ -3,11 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import { LogoFull } from './Logo'
-import { LogOut, LayoutDashboard, Shield, Newspaper, Home, ChevronDown } from 'lucide-react'
+import { LogOut, LayoutDashboard, Shield, Newspaper, Home, ChevronDown, Mail } from 'lucide-react'
 
 const NAV_T = {
-  es: { home: 'Inicio', news: 'Noticias', picks: 'Picks', signOut: 'Cerrar sesión', signIn: 'Iniciar sesión' },
-  en: { home: 'Home',   news: 'News',     picks: 'Picks', signOut: 'Sign out',       signIn: 'Sign in' },
+  es: { home: 'Inicio', news: 'Noticias', contact: 'Contacto', picks: 'Picks', signOut: 'Cerrar sesión', signIn: 'Iniciar sesión' },
+  en: { home: 'Home',   news: 'News',     contact: 'Contact',  picks: 'Picks', signOut: 'Sign out',       signIn: 'Sign in' },
 }
 
 export default function Navbar() {
@@ -64,6 +64,7 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           {navLink('/', t.home, Home, true)}
           {navLink('/noticias', t.news, Newspaper)}
+          {navLink('/contacto', t.contact, Mail)}
 
           {user ? (
             <>
