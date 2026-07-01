@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, BarChart2, AlertTriangle } from 'lucide-react'
+import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, BarChart2, AlertTriangle, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
 import { useAuth } from '../context/AuthContext'
@@ -45,9 +45,12 @@ const T = {
     servicesTitle: 'Nuestros Servicios',
     servicesSub: 'Todo lo que necesitas para apostar de manera inteligente y rentable.',
     services: [
-      { title: 'Picks Diarios', desc: 'Análisis estadístico de cada partido con edge detectado, cuota recomendada y stake sugerido.' },
-      { title: 'Prime Academy', desc: 'Aprende a leer estadísticas, identificar value bets, manejar tu bankroll y pensar como un apostador profesional.' },
-      { title: 'Noticias Deportivas', desc: 'Cobertura diaria del Mundial 2026 y las principales ligas. Información que impacta las líneas antes que nadie.' },
+      { title: 'Análisis estadístico', desc: 'Cada pick respaldado por datos reales, estadísticas avanzadas y análisis profundo de cada partido.' },
+      { title: 'Picks verificados con historial público', desc: 'Todos nuestros resultados son públicos y verificables. Sin trampa, sin mentira — solo transparencia total.' },
+      { title: 'Control de apuestas', desc: 'Lleva un registro profesional de tus apuestas con stake, utilidad y rendimiento acumulado en % del bank.' },
+      { title: 'Aprende a apostar mejor', desc: 'La mejor plataforma para aprender sobre apuestas deportivas. Value betting, bankroll management y más.' },
+      { title: 'Atención al cliente 24/7', desc: 'Nuestro equipo está disponible para resolver tus dudas en cualquier momento. Siempre cerca de ti.' },
+      { title: 'Juego responsable', desc: 'Apostamos por el juego responsable. Te enseñamos a apostar con disciplina, criterio y sin riesgos innecesarios.' },
     ],
 
     // Pick preview
@@ -145,9 +148,12 @@ const T = {
     servicesTitle: 'Our Services',
     servicesSub: 'Everything you need to bet intelligently and profitably.',
     services: [
-      { title: 'Daily Picks', desc: 'Statistical analysis of every game with detected edge, recommended odds, and suggested stake.' },
-      { title: 'Prime Academy', desc: 'Learn to read statistics, identify value bets, manage your bankroll, and think like a professional bettor.' },
-      { title: 'Sports News', desc: 'Daily coverage of the 2026 World Cup and major leagues. Information that moves the lines before anyone else.' },
+      { title: 'Statistical Analysis', desc: 'Every pick backed by real data, advanced statistics and deep analysis of each match.' },
+      { title: 'Verified Picks with Public Record', desc: 'All our results are public and verifiable. No tricks, no lies — total transparency.' },
+      { title: 'Betting Tracker', desc: 'Keep a professional record of your bets with stake, utility and cumulative performance % of bankroll.' },
+      { title: 'Learn to Bet Smarter', desc: 'The best platform to learn about sports betting. Value betting, bankroll management and more.' },
+      { title: '24/7 Customer Support', desc: 'Our team is available to resolve your doubts at any time. Always close to you.' },
+      { title: 'Responsible Gambling', desc: 'We believe in responsible gambling. We teach you to bet with discipline, criteria and without unnecessary risks.' },
     ],
 
     pickPreviewTitle: 'What picks look like',
@@ -207,7 +213,7 @@ const T = {
   },
 }
 
-const SERVICE_ICONS = [Target, BookOpen, Newspaper]
+const SERVICE_ICONS = [BarChart2, CheckCircle, TrendingUp, BookOpen, Users, Shield]
 
 /* ── LIVE STATS FROM SUPABASE ──────────────────────────────── */
 function usePickStats() {
@@ -436,7 +442,7 @@ export default function Landing() {
             <p className="text-white/40 text-base max-w-lg mx-auto">{t.servicesSub}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
             {t.services.map(({ title, desc }, i) => {
               const Icon = SERVICE_ICONS[i]
               return (
