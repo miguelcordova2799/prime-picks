@@ -1091,13 +1091,21 @@ function CourtesyAdmin() {
     setError('')
     setToast('')
 
+    // ilike = case-insensitive; maybeSingle = null (not error) when not found
     const { data, error: fetchErr } = await supabase
       .from('profiles')
       .select('id, email')
-      .eq('email', trimmed)
-      .single()
+      .ilike('email', trimmed)
+      .maybeSingle()
 
-    if (fetchErr || !data) {
+    if (fetchErr) {
+      // Surface the real Supabase error (e.g. column "email" does not exist)
+      setError(`Error al buscar: ${fetchErr.message} — ¿tiene la columna email en profiles? Corre: ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT; UPDATE public.profiles SET email = (SELECT email FROM auth.users WHERE auth.users.id = profiles.id);`)
+      setSaving(false)
+      return
+    }
+
+    if (!data) {
       setError('Usuario no encontrado — pídele que se registre primero en primepicks.mx')
       setSaving(false)
       return
@@ -1110,7 +1118,7 @@ function CourtesyAdmin() {
 
     setSaving(false)
     if (updateErr) {
-      setError(`Error: ${updateErr.message}`)
+      setError(`Error al actualizar: ${updateErr.message}`)
     } else {
       setToast(`✅ Acceso cortesía activado para ${trimmed}`)
       setEmail('')
