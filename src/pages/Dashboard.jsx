@@ -92,7 +92,7 @@ export default function Dashboard() {
   async function fetchHistory() {
     const { data } = await supabase
       .from('picks')
-      .select('id, match_name, pick_text, odds, result, published_at, stake_percent')
+      .select('id, match_name, pick_text, odds, result, published_at, stake_percent, is_parlay, parlay_legs')
       .in('result', ['won', 'lost'])
       .order('published_at', { ascending: false })
     setHistory(data || [])

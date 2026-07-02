@@ -52,7 +52,10 @@ export default function Navbar() {
   }
 
   const username = user?.email?.split('@')[0] ?? ''
-  const picksLeft = Math.max(0, 2 - (profile?.picks_viewed ?? 0))
+  const trialUnlocked = (() => {
+    try { return JSON.parse(profile?.trial_pick_ids || '[]') } catch { return [] }
+  })()
+  const picksLeft = Math.max(0, 2 - trialUnlocked.length)
 
   return (
     <nav className="border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-sm sticky top-0 z-50">

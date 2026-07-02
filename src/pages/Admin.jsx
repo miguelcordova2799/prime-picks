@@ -31,7 +31,7 @@ const EMPTY_NEWS = {
   category: 'General', scheduled_at: '',
 }
 
-const NEWS_CATEGORIES = ['General', 'México', 'Resultados', 'Análisis', 'Selecciones', 'Fixtures']
+const NEWS_CATEGORIES = ['General']
 
 export default function Admin() {
   const [tab, setTab] = useState('picks')

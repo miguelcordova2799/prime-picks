@@ -3,14 +3,9 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Calendar, Tag, ArrowRight, Newspaper } from 'lucide-react'
 
-const CATEGORIES = ['Todas', 'General', 'México', 'Resultados', 'Análisis', 'Selecciones', 'Fixtures']
+const CATEGORIES = ['Todas', 'General']
 
 const CATEGORY_COLORS = {
-  México: 'bg-red-500/15 text-red-400',
-  Resultados: 'bg-[#00D964]/15 text-[#00D964]',
-  Análisis: 'bg-blue-500/15 text-blue-400',
-  Selecciones: 'bg-purple-500/15 text-purple-400',
-  Fixtures: 'bg-yellow-500/15 text-yellow-400',
   General: 'bg-white/10 text-white/50',
 }
 

@@ -282,10 +282,16 @@ export default function Landing() {
       navigate('/login')
     } else if (hasFullAccess) {
       navigate('/dashboard')
-    } else if ((profile?.picks_viewed ?? 0) < 2) {
-      navigate('/dashboard')
     } else {
-      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+      // Free user: send to dashboard if they still have trial picks left
+      const unlocked = (() => {
+        try { return JSON.parse(profile?.trial_pick_ids || '[]') } catch { return [] }
+      })()
+      if (unlocked.length < 2) {
+        navigate('/dashboard')
+      } else {
+        document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+      }
     }
   }
 
