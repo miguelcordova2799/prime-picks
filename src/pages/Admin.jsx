@@ -288,48 +288,81 @@ function PicksAdmin() {
                     </button>
                   )}
                 </div>
-                <div className="space-y-2">
-                  {form.parlay_legs.map((leg, i) => (
-                    <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 1fr 72px 30px' }}>
-                      <input
-                        value={leg.match}
-                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], match: e.target.value }; field('parlay_legs', legs) }}
-                        placeholder={`Partido ${i + 1}`}
-                        className="input-style text-xs"
-                      />
-                      <input
-                        value={leg.pick}
-                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], pick: e.target.value }; field('parlay_legs', legs) }}
-                        placeholder="Pick"
-                        className="input-style text-xs"
-                      />
-                      <input
-                        value={leg.odds}
-                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], odds: e.target.value }; field('parlay_legs', legs) }}
-                        placeholder="+110"
-                        className="input-style text-xs"
-                      />
-                      <button
-                        type="button"
-                        disabled={form.parlay_legs.length <= 2}
-                        onClick={() => field('parlay_legs', form.parlay_legs.filter((_, idx) => idx !== i))}
-                        className="flex items-center justify-center text-white/30 hover:text-red-400 transition-colors disabled:opacity-20"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+
+                {/* Header row */}
+                <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: '1fr 1fr 72px 76px 30px' }}>
+                  {['Partido', 'Pick', 'Momio', 'Momio Final', ''].map(h => (
+                    <span key={h} className="text-[10px] text-white/25 px-1">{h}</span>
                   ))}
                 </div>
+
+                <div className="space-y-2">
+                  {form.parlay_legs.map((leg, i) => {
+                    // Running accumulation up to this row
+                    const runningDecimal = form.parlay_legs.slice(0, i + 1).reduce((acc, l) => {
+                      if (!l.odds.trim()) return acc
+                      const d = americanToDecimal(l.odds) ?? parseFloat(l.odds)
+                      return acc * (isNaN(d) || !d ? 1 : d)
+                    }, 1)
+                    const hasOdds = form.parlay_legs.slice(0, i + 1).some(l => l.odds.trim())
+
+                    return (
+                      <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 1fr 72px 76px 30px' }}>
+                        <input
+                          value={leg.match}
+                          onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], match: e.target.value }; field('parlay_legs', legs) }}
+                          placeholder={`Partido ${i + 1}`}
+                          className="input-style text-xs"
+                        />
+                        <input
+                          value={leg.pick}
+                          onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], pick: e.target.value }; field('parlay_legs', legs) }}
+                          placeholder="Pick"
+                          className="input-style text-xs"
+                        />
+                        <input
+                          value={leg.odds}
+                          onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], odds: e.target.value }; field('parlay_legs', legs) }}
+                          placeholder="+110"
+                          className="input-style text-xs"
+                        />
+                        {/* Running total for this row */}
+                        <div className="px-2 py-2 rounded-lg bg-[#0A0A0A] border border-white/8 text-center">
+                          {hasOdds && runningDecimal > 1 ? (
+                            <div>
+                              <div className="text-xs font-bold text-orange-400">{decimalToAmerican(runningDecimal)}</div>
+                              <div className="text-[10px] text-white/25">{runningDecimal.toFixed(2)}x</div>
+                            </div>
+                          ) : (
+                            <span className="text-white/20 text-xs">—</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={form.parlay_legs.length <= 2}
+                          onClick={() => field('parlay_legs', form.parlay_legs.filter((_, idx) => idx !== i))}
+                          className="flex items-center justify-center text-white/30 hover:text-red-400 transition-colors disabled:opacity-20"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+
                 {/* Total odds preview */}
                 {(() => {
                   const validLegs = form.parlay_legs.filter(l => l.odds.trim())
                   if (validLegs.length < 2) return null
                   const total = calcParlayTotalOdds(validLegs)
+                  const american = decimalToAmerican(total)
                   return (
-                    <div className="mt-2 px-3 py-2 rounded-lg bg-orange-500/8 border border-orange-500/20 flex items-center gap-3">
-                      <span className="text-xs text-white/40">Momio total parlay:</span>
-                      <span className="text-sm font-bold text-orange-400">{decimalToAmerican(total)}</span>
-                      <span className="text-xs text-white/30">(x{total.toFixed(2)})</span>
+                    <div className="mt-3 px-4 py-3 rounded-xl bg-orange-500/10 border border-orange-500/30">
+                      <div className="text-xs text-white/40 mb-1">Momio total del parlay ({validLegs.length} patas) — este valor se guardará en Supabase</div>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-2xl font-black text-orange-400">{american}</span>
+                        <span className="text-sm text-white/40">({total.toFixed(4)} decimal)</span>
+                      </div>
                     </div>
                   )
                 })()}

@@ -321,7 +321,12 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
           </div>
           <div>
             <div className="text-xs text-white/35 mb-1">{pick.is_parlay ? 'Momio total' : 'Momio'}</div>
-            <div className={`text-sm font-semibold ${pick.is_parlay ? 'text-orange-400' : 'text-white/80'}`}>{formatOdds(pick.odds)}</div>
+            <div className={`text-sm font-semibold ${pick.is_parlay ? 'text-orange-400' : 'text-white/80'}`}>
+              {formatOdds(pick.odds)}
+              {pick.is_parlay && pick.odds && (
+                <span className="text-xs text-white/30 font-normal ml-1">({parseFloat(pick.odds).toFixed(2)}x)</span>
+              )}
+            </div>
           </div>
           <div>
             <div className="text-xs text-white/35 mb-1">Stake</div>
