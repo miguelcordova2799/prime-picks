@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
 const EMPTY_PICK = {
@@ -45,6 +45,7 @@ export default function Admin() {
             label={unreadCount > 0 ? `Mensajes (${unreadCount})` : 'Mensajes'}
             badge={unreadCount}
           />
+          <TabBtn active={tab === 'cortesia'} onClick={() => setTab('cortesia')} icon={Users} label="Cortesía" />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
@@ -52,6 +53,7 @@ export default function Admin() {
         {tab === 'lineas' && <LineasAdmin />}
         {tab === 'control' && <ControlAdmin />}
         {tab === 'mensajes' && <MensajesAdmin />}
+        {tab === 'cortesia' && <CourtesyAdmin />}
       </div>
 
       <style>{`
@@ -1056,6 +1058,144 @@ function MensajesAdmin() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── CORTESÍA ADMIN ─────────────────────────────────────────── */
+function CourtesyAdmin() {
+  const [users, setUsers] = useState([])
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => { fetchCourtesyUsers() }, [])
+
+  async function fetchCourtesyUsers() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email, created_at, is_courtesy, updated_at')
+      .eq('is_courtesy', true)
+      .order('updated_at', { ascending: false })
+    setUsers(data || [])
+    setLoading(false)
+  }
+
+  async function grantAccess() {
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return
+    setSaving(true)
+    setError('')
+    setToast('')
+
+    const { data, error: fetchErr } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', trimmed)
+      .single()
+
+    if (fetchErr || !data) {
+      setError('Usuario no encontrado — pídele que se registre primero en primepicks.mx')
+      setSaving(false)
+      return
+    }
+
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({ is_courtesy: true })
+      .eq('id', data.id)
+
+    setSaving(false)
+    if (updateErr) {
+      setError(`Error: ${updateErr.message}`)
+    } else {
+      setToast(`✅ Acceso cortesía activado para ${trimmed}`)
+      setEmail('')
+      fetchCourtesyUsers()
+      setTimeout(() => setToast(''), 4000)
+    }
+  }
+
+  async function revokeAccess(userId, userEmail) {
+    await supabase.from('profiles').update({ is_courtesy: false }).eq('id', userId)
+    setToast(`❌ Acceso revocado para ${userEmail}`)
+    fetchCourtesyUsers()
+    setTimeout(() => setToast(''), 4000)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Info */}
+      <div className="px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
+        <p className="text-sm text-[#00D964]">
+          Los usuarios de cortesía tienen acceso completo a todos los picks y funciones sin costo.
+          Primero deben crear una cuenta en <span className="font-bold">primepicks.mx</span>
+        </p>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="px-4 py-3 rounded-xl bg-[#111111] border border-white/10 text-sm text-white">
+          {toast}
+        </div>
+      )}
+
+      {/* Add form */}
+      <div className="bg-[#111111] border border-white/8 rounded-xl p-5">
+        <h3 className="font-bold text-white mb-4">Dar acceso gratuito</h3>
+        <div className="flex gap-3">
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setError('') }}
+            onKeyDown={e => e.key === 'Enter' && grantAccess()}
+            placeholder="email@usuario.com"
+            className="flex-1 px-4 py-2.5 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors"
+          />
+          <button
+            onClick={grantAccess}
+            disabled={saving || !email.trim()}
+            className="px-5 py-2.5 bg-[#00D964] text-black text-sm font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {saving ? 'Buscando...' : '✅ Dar acceso gratuito'}
+          </button>
+        </div>
+        {error && (
+          <p className="mt-3 text-sm text-red-400">{error}</p>
+        )}
+      </div>
+
+      {/* List */}
+      <div>
+        <h3 className="font-bold text-white mb-3">Usuarios con acceso cortesía ({users.length})</h3>
+        {loading ? (
+          <p className="text-white/40 text-sm">Cargando...</p>
+        ) : users.length === 0 ? (
+          <div className="text-center py-10 text-white/30 text-sm">No hay usuarios de cortesía todavía</div>
+        ) : (
+          <div className="space-y-2">
+            {users.map(u => (
+              <div key={u.id} className="flex items-center justify-between gap-4 px-4 py-3 bg-[#111111] border border-white/8 rounded-xl">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{u.email || u.id}</p>
+                  <p className="text-xs text-white/35 mt-0.5">
+                    Desde {new Date(u.updated_at || u.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeAccess(u.id, u.email)}
+                  className="shrink-0 px-3 py-1.5 text-xs font-bold text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors"
+                >
+                  ❌ Revocar acceso
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

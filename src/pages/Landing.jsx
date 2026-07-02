@@ -274,13 +274,13 @@ export default function Landing() {
   }, [])
 
   const { hitRate, utility, total, streak } = usePickStats()
-  const { user, profile, isSubscribed } = useAuth()
+  const { user, profile, hasFullAccess } = useAuth()
   const navigate = useNavigate()
 
   function handlePicksClick() {
     if (!user) {
       navigate('/login')
-    } else if (isSubscribed) {
+    } else if (hasFullAccess) {
       navigate('/dashboard')
     } else if ((profile?.picks_viewed ?? 0) < 2) {
       navigate('/dashboard')

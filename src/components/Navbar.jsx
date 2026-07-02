@@ -11,7 +11,7 @@ const NAV_T = {
 }
 
 export default function Navbar() {
-  const { user, profile, isAdmin, isSubscribed, signOut } = useAuth()
+  const { user, profile, isAdmin, isSubscribed, isCourtesy, hasFullAccess, signOut } = useAuth()
   const { lang, setLang } = useLang()
   const navigate = useNavigate()
   const location = useLocation()
@@ -79,11 +79,11 @@ export default function Navbar() {
                 >
                   <span className="font-medium max-w-[80px] truncate">{username}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                    isSubscribed
+                    hasFullAccess
                       ? 'bg-[#00D964]/20 text-[#00D964] border border-[#00D964]/30'
                       : 'bg-white/8 text-white/40 border border-white/10'
                   }`}>
-                    {isSubscribed ? 'Prime ✓' : 'Gratis'}
+                    {isSubscribed ? 'Prime ✓' : isCourtesy ? 'Cortesía ✓' : 'Gratis'}
                   </span>
                   <ChevronDown size={13} className={`transition-transform duration-150 ${menuOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -93,13 +93,13 @@ export default function Navbar() {
                     {/* User info */}
                     <div className="px-4 py-3 border-b border-white/8">
                       <p className="text-xs text-white/40 truncate mb-0.5">{user.email}</p>
-                      <p className={`text-xs font-bold ${isSubscribed ? 'text-[#00D964]' : 'text-white/50'}`}>
-                        {isSubscribed ? 'Suscriptor Prime' : 'Plan gratuito'}
+                      <p className={`text-xs font-bold ${hasFullAccess ? 'text-[#00D964]' : 'text-white/50'}`}>
+                        {isSubscribed ? 'Suscriptor Prime' : isCourtesy ? 'Acceso cortesía' : 'Plan gratuito'}
                       </p>
                     </div>
 
                     {/* Trial info for free users */}
-                    {!isSubscribed && (
+                    {!hasFullAccess && (
                       <div className="px-4 py-2.5 border-b border-white/8">
                         <p className="text-xs text-white/50">
                           Te quedan{' '}

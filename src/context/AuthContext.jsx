@@ -54,9 +54,11 @@ export function AuthProvider({ children }) {
   const isAdmin = profile?.role === 'admin'
   const isSubscribed = profile?.subscription_status === 'active' &&
     (!profile?.subscription_end || new Date(profile.subscription_end) > new Date())
+  const isCourtesy = profile?.is_courtesy === true
+  const hasFullAccess = isSubscribed || isCourtesy
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isSubscribed, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isSubscribed, isCourtesy, hasFullAccess, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

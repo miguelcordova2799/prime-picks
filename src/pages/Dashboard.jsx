@@ -23,7 +23,7 @@ function fmtCDMX(iso) {
 }
 
 export default function Dashboard() {
-  const { user, profile, loading: authLoading, isSubscribed } = useAuth()
+  const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
   const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
@@ -42,7 +42,7 @@ export default function Dashboard() {
   // User manually unlocks picks via unlockPick() — nothing is auto-assigned.
   useEffect(() => {
     if (authLoading || loading) return
-    if (isSubscribed) { setTrialPickIds([]); return }
+    if (hasFullAccess) { setTrialPickIds([]); return }
 
     const saved = profile?.trial_pick_ids
     if (saved) {
@@ -113,17 +113,17 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-2xl font-black mb-1">
             Dashboard{' '}
-            {!isSubscribed && (
+            {!hasFullAccess && (
               <span className="text-sm font-normal text-white/30 ml-2">· Plan gratuito</span>
             )}
           </h1>
           <p className="text-white/40 text-sm">
-            {isSubscribed ? 'Acceso completo a todos los picks' : 'Suscríbete para ver el análisis completo'}
+            {hasFullAccess ? 'Acceso completo a todos los picks' : 'Suscríbete para ver el análisis completo'}
           </p>
         </div>
 
         {/* Subscription banner */}
-        {!isSubscribed && (
+        {!hasFullAccess && (
           <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-[#00D964]/12 to-[#00D964]/4 border border-[#00D964]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="font-bold text-white mb-1">Desbloquea todos los picks</div>
@@ -156,7 +156,7 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
 
           {/* Trial status banner */}
-          {!isSubscribed && (
+          {!hasFullAccess && (
             trialPickIds.length < 2 ? (
               <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
                 <p className="text-sm text-[#00D964] font-medium">
@@ -188,7 +188,7 @@ export default function Dashboard() {
                 <PickCard
                   key={pick.id}
                   pick={pick}
-                  isSubscribed={isSubscribed}
+                  isSubscribed={hasFullAccess}
                   trialPickIds={trialPickIds}
                   onUnlock={unlockPick}
                 />
@@ -198,7 +198,7 @@ export default function Dashboard() {
         </div>
 
         {/* History table */}
-        <HistoryTable history={history} isSubscribed={isSubscribed} />
+        <HistoryTable history={history} isSubscribed={hasFullAccess} />
 
       </div>
 
