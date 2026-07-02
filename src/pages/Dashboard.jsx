@@ -236,7 +236,14 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
       <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
         <div className="p-4">
           <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
-          <div className="font-bold text-white truncate">{pick.match_name}</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-white">{pick.match_name}</span>
+            {pick.is_parlay && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                🔗 PARLAY
+              </span>
+            )}
+          </div>
         </div>
         <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
           <span className="text-xl">🔒</span>
@@ -276,9 +283,29 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
     <>
       <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
         <div className="p-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
-            <div className="font-bold text-white truncate">{pick.match_name}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-white">{pick.match_name}</span>
+              {pick.is_parlay && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                  🔗 PARLAY
+                </span>
+              )}
+            </div>
+            {pick.is_parlay && pick.parlay_legs?.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {pick.parlay_legs.map((leg, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-xs">
+                    <span className="text-white/25">⚽</span>
+                    <span className="text-white/55">{leg.match}</span>
+                    <span className="text-white/25">—</span>
+                    <span className="text-white/80 font-medium">{leg.pick}</span>
+                    <span className="text-white/35 font-mono">({leg.odds})</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${RESULT_STYLES[pick.result] || RESULT_STYLES.pending}`}>
@@ -293,8 +320,8 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
             <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
           </div>
           <div>
-            <div className="text-xs text-white/35 mb-1">Momio</div>
-            <div className="text-sm font-semibold text-white/80">{formatOdds(pick.odds)}</div>
+            <div className="text-xs text-white/35 mb-1">{pick.is_parlay ? 'Momio total' : 'Momio'}</div>
+            <div className={`text-sm font-semibold ${pick.is_parlay ? 'text-orange-400' : 'text-white/80'}`}>{formatOdds(pick.odds)}</div>
           </div>
           <div>
             <div className="text-xs text-white/35 mb-1">Stake</div>
@@ -599,10 +626,18 @@ function HistoryTable({ history, isSubscribed }) {
                         {fmtCDMX(pick.published_at)}
                       </td>
                       <td className="px-4 py-3 text-sm text-white/80 max-w-[160px]">
-                        <span className="block truncate">{pick.match_name}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="block truncate">{pick.match_name}</span>
+                          {pick.is_parlay && (
+                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold bg-orange-500/20 text-orange-400">PARLAY</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-white/70">
-                        {pick.pick_text}
+                        {pick.is_parlay
+                          ? <span className="text-orange-400 font-medium">🔗 Parlay {pick.parlay_legs?.length ?? 0} patas</span>
+                          : pick.pick_text
+                        }
                       </td>
                       <td className="px-4 py-3 text-sm text-white/70 whitespace-nowrap font-mono">
                         {formatOdds(pick.odds)}

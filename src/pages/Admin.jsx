@@ -6,6 +6,24 @@ import { formatOdds, americanToDecimal } from '../lib/odds'
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', stake_percent: 2,
   analysis: '', scheduled_at: '', is_free: false,
+  is_parlay: false,
+  parlay_legs: [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
+}
+
+function decimalToAmerican(decimal) {
+  const d = parseFloat(decimal)
+  if (isNaN(d) || d <= 1) return '—'
+  if (d >= 2) return `+${Math.round((d - 1) * 100)}`
+  return `${Math.round(-100 / (d - 1))}`
+}
+
+function calcParlayTotalOdds(legs) {
+  const valid = legs.filter(l => l.odds.trim())
+  if (valid.length === 0) return 1
+  return valid.reduce((acc, leg) => {
+    const d = americanToDecimal(leg.odds) ?? parseFloat(leg.odds)
+    return acc * (isNaN(d) || !d ? 1 : d)
+  }, 1)
 }
 
 const EMPTY_NEWS = {
@@ -127,17 +145,19 @@ function PicksAdmin() {
   function handleEdit(pick) {
     setEditingPick(pick)
     setForm({
-      match_name:   pick.match_name  || '',
-      pick_text:    pick.pick_text   || '',
-      odds:         pick.odds        != null ? String(pick.odds) : '',
-      bookmaker:    pick.bookmaker   || '',
+      match_name:    pick.match_name  || '',
+      pick_text:     pick.pick_text   || '',
+      odds:          pick.odds != null ? String(pick.odds) : '',
+      bookmaker:     pick.bookmaker   || '',
       stake_percent: parseFloat(pick.stake_percent) || 2,
-      analysis:     pick.analysis    || '',
-      is_free:      pick.is_free     || false,
-      result:       pick.result      || 'pending',
-      scheduled_at: pick.published_at
+      analysis:      pick.analysis    || '',
+      is_free:       pick.is_free     || false,
+      result:        pick.result      || 'pending',
+      scheduled_at:  pick.published_at
         ? new Date(pick.published_at).toISOString().slice(0, 16)
         : '',
+      is_parlay:     pick.is_parlay   || false,
+      parlay_legs:   pick.parlay_legs || [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -150,34 +170,50 @@ function PicksAdmin() {
   async function handleSave(e) {
     e.preventDefault()
     setSubmitting(true)
-    const decimalOdds = americanToDecimal(form.odds) ?? parseFloat(form.odds)
+
+    let finalOdds, finalPickText, finalLegs
+    if (form.is_parlay) {
+      const validLegs = form.parlay_legs.filter(l => l.match.trim() && l.pick.trim() && l.odds.trim())
+      if (validLegs.length < 2) {
+        showToast('Un parlay necesita al menos 2 patas completas')
+        setSubmitting(false)
+        return
+      }
+      finalOdds = calcParlayTotalOdds(validLegs)
+      finalPickText = `Parlay ${validLegs.length} patas`
+      finalLegs = validLegs
+    } else {
+      finalOdds = americanToDecimal(form.odds) ?? parseFloat(form.odds)
+      finalPickText = form.pick_text
+      finalLegs = null
+    }
+
+    const payload = {
+      match_name:    form.match_name,
+      pick_text:     finalPickText,
+      odds:          finalOdds,
+      bookmaker:     form.bookmaker,
+      stake_percent: parseFloat(form.stake_percent) || 2,
+      analysis:      form.analysis,
+      is_free:       form.is_free,
+      is_parlay:     form.is_parlay,
+      parlay_legs:   finalLegs,
+    }
 
     if (editingPick) {
       const { error } = await supabase.from('picks').update({
-        match_name:    form.match_name,
-        pick_text:     form.pick_text,
-        odds:          decimalOdds,
-        bookmaker:     form.bookmaker,
-        stake_percent: parseFloat(form.stake_percent) || 2,
-        analysis:      form.analysis,
-        is_free:       form.is_free,
-        result:        form.result || 'pending',
-        published_at:  form.scheduled_at || editingPick.published_at,
+        ...payload,
+        result:       form.result || 'pending',
+        published_at: form.scheduled_at || editingPick.published_at,
       }).eq('id', editingPick.id)
       setSubmitting(false)
       if (error) showToast('Error: ' + error.message)
       else { showToast('Pick actualizado ✓'); cancelEdit(); fetchPicks() }
     } else {
       const { error } = await supabase.from('picks').insert({
-        match_name:    form.match_name,
-        pick_text:     form.pick_text,
-        odds:          decimalOdds,
-        bookmaker:     form.bookmaker,
-        stake_percent: parseFloat(form.stake_percent) || 2,
-        analysis:      form.analysis,
-        is_free:       form.is_free,
-        result:        'pending',
-        published_at:  form.scheduled_at || new Date().toISOString(),
+        ...payload,
+        result:       'pending',
+        published_at: form.scheduled_at || new Date().toISOString(),
       })
       setSubmitting(false)
       if (error) showToast('Error: ' + error.message)
@@ -220,17 +256,94 @@ function PicksAdmin() {
             }
           </h2>
           <form onSubmit={handleSave} className={`space-y-4 bg-[#111111] border rounded-2xl p-5 ${isEditing ? 'border-[#EF9F27]/30' : 'border-white/8'}`}>
-            <Field label="Partido *">
-              <input value={form.match_name} onChange={e => field('match_name', e.target.value)} required placeholder="Real Madrid vs Barcelona" className="input-style" />
+            <Field label={form.is_parlay ? 'Título del parlay *' : 'Partido *'}>
+              <input value={form.match_name} onChange={e => field('match_name', e.target.value)} required placeholder={form.is_parlay ? 'Parlay Miércoles' : 'Real Madrid vs Barcelona'} className="input-style" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Pick *">
-                <input value={form.pick_text} onChange={e => field('pick_text', e.target.value)} required placeholder="Ambos anotan" className="input-style" />
-              </Field>
-              <Field label="Cuota * (americano o decimal)">
-                <input type="text" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="+110 o 1.91" className="input-style" />
-              </Field>
-            </div>
+
+            {/* Parlay toggle */}
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div
+                onClick={() => field('is_parlay', !form.is_parlay)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${form.is_parlay ? 'bg-orange-500' : 'bg-white/15'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_parlay ? 'translate-x-5' : ''}`} />
+              </div>
+              <span className="text-sm text-white/70">
+                🔗 Es un parlay <span className="text-white/35">(múltiples selecciones combinadas)</span>
+              </span>
+            </label>
+
+            {/* Pick / Parlay legs */}
+            {form.is_parlay ? (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-white/40">Patas del parlay * (mín. 2)</label>
+                  {form.parlay_legs.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => field('parlay_legs', [...form.parlay_legs, { match: '', pick: '', odds: '' }])}
+                      className="text-xs text-[#00D964] hover:underline flex items-center gap-1"
+                    >
+                      <Plus size={12} /> Agregar pata
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {form.parlay_legs.map((leg, i) => (
+                    <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 1fr 72px 30px' }}>
+                      <input
+                        value={leg.match}
+                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], match: e.target.value }; field('parlay_legs', legs) }}
+                        placeholder={`Partido ${i + 1}`}
+                        className="input-style text-xs"
+                      />
+                      <input
+                        value={leg.pick}
+                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], pick: e.target.value }; field('parlay_legs', legs) }}
+                        placeholder="Pick"
+                        className="input-style text-xs"
+                      />
+                      <input
+                        value={leg.odds}
+                        onChange={e => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], odds: e.target.value }; field('parlay_legs', legs) }}
+                        placeholder="+110"
+                        className="input-style text-xs"
+                      />
+                      <button
+                        type="button"
+                        disabled={form.parlay_legs.length <= 2}
+                        onClick={() => field('parlay_legs', form.parlay_legs.filter((_, idx) => idx !== i))}
+                        className="flex items-center justify-center text-white/30 hover:text-red-400 transition-colors disabled:opacity-20"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Total odds preview */}
+                {(() => {
+                  const validLegs = form.parlay_legs.filter(l => l.odds.trim())
+                  if (validLegs.length < 2) return null
+                  const total = calcParlayTotalOdds(validLegs)
+                  return (
+                    <div className="mt-2 px-3 py-2 rounded-lg bg-orange-500/8 border border-orange-500/20 flex items-center gap-3">
+                      <span className="text-xs text-white/40">Momio total parlay:</span>
+                      <span className="text-sm font-bold text-orange-400">{decimalToAmerican(total)}</span>
+                      <span className="text-xs text-white/30">(x{total.toFixed(2)})</span>
+                    </div>
+                  )
+                })()}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Pick *">
+                  <input value={form.pick_text} onChange={e => field('pick_text', e.target.value)} required placeholder="Ambos anotan" className="input-style" />
+                </Field>
+                <Field label="Cuota * (americano o decimal)">
+                  <input type="text" value={form.odds} onChange={e => field('odds', e.target.value)} required placeholder="+110 o 1.91" className="input-style" />
+                </Field>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Casa de apuestas">
                 <input value={form.bookmaker} onChange={e => field('bookmaker', e.target.value)} placeholder="Bet365" className="input-style" />
