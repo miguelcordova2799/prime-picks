@@ -29,8 +29,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
-  // null = still determining (blocks render), [] = subscribed, [id,...] = trial picks assigned
+  // null = still determining (blocks render until Supabase confirms), [] = full access
   const [trialPickIds, setTrialPickIds] = useState(null)
+  const [trialSaveError, setTrialSaveError] = useState('')
 
   useEffect(() => {
     fetchPicks()
@@ -38,27 +39,53 @@ export default function Dashboard() {
     fetchHistory()
   }, [])
 
-  // Read saved trial pick IDs from profile once auth + picks are ready.
-  // User manually unlocks picks via unlockPick() — nothing is auto-assigned.
+  // Read trial_pick_ids DIRECTLY from Supabase every mount — never rely on cached profile.
+  // This guarantees reload always shows the correct unlocked picks.
   useEffect(() => {
-    if (authLoading || loading) return
+    if (authLoading || loading || !user) return
     if (hasFullAccess) { setTrialPickIds([]); return }
+    fetchTrialIds()
+  }, [authLoading, loading, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const saved = profile?.trial_pick_ids
+  async function fetchTrialIds() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('trial_pick_ids')
+      .eq('id', user.id)
+      .single()
+
+    if (error) {
+      // Column may not exist yet — default to empty (no picks unlocked)
+      setTrialPickIds([])
+      return
+    }
+
+    const saved = data?.trial_pick_ids
     if (saved) {
       try { setTrialPickIds(JSON.parse(saved)) } catch { setTrialPickIds([]) }
     } else {
       setTrialPickIds([])
     }
-  }, [authLoading, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   async function unlockPick(pickId) {
     const newIds = [...trialPickIds, pickId]
+    // Optimistic update
     setTrialPickIds(newIds)
-    if (user) {
-      await supabase.from('profiles')
-        .update({ trial_pick_ids: JSON.stringify(newIds) })
-        .eq('id', user.id)
+    setTrialSaveError('')
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        trial_pick_ids: JSON.stringify(newIds),
+        picks_viewed:   newIds.length,
+      })
+      .eq('id', user.id)
+
+    if (error) {
+      // Revert — save failed (most likely missing RLS UPDATE policy)
+      setTrialPickIds(trialPickIds)
+      setTrialSaveError(`No se pudo guardar el pick desbloqueado: ${error.message}`)
     }
   }
 
@@ -154,6 +181,13 @@ export default function Dashboard() {
         {/* Picks list */}
         <div>
           <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
+
+          {/* RLS save error — shown when unlockPick fails to persist */}
+          {trialSaveError && (
+            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              ⚠️ {trialSaveError} — <span className="text-white/50">El administrador debe agregar la política RLS: <code className="text-xs bg-white/5 px-1 rounded">CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = id);</code></span>
+            </div>
+          )}
 
           {/* Trial status banner */}
           {!hasFullAccess && (
