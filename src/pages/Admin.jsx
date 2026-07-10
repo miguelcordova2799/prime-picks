@@ -3,12 +3,17 @@ import { supabase } from '../lib/supabase'
 import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 
+const EMPTY_COMBINED_BET = { market: '', selection: '', odds: '' }
 const EMPTY_PICK = {
   match_name: '', pick_text: '', odds: '', bookmaker: '', stake_percent: 2,
   analysis: '', scheduled_at: '', is_free: false,
   is_parlay: false,
   parlay_legs: [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
+  is_combined: false,
+  combined_bets: [{ ...EMPTY_COMBINED_BET }, { ...EMPTY_COMBINED_BET }],
 }
+
+const COMBINED_MARKETS = ['Resultado', 'Total goles', 'Primer gol', 'Ambos anotan', 'Hándicap', 'Tarjetas', 'Córners', 'Otro']
 
 function decimalToAmerican(decimal) {
   const d = parseFloat(decimal)
@@ -156,8 +161,10 @@ function PicksAdmin() {
       scheduled_at:  pick.published_at
         ? new Date(pick.published_at).toISOString().slice(0, 16)
         : '',
-      is_parlay:     pick.is_parlay   || false,
-      parlay_legs:   pick.parlay_legs || [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
+      is_parlay:     pick.is_parlay    || false,
+      parlay_legs:   pick.parlay_legs  || [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
+      is_combined:   pick.is_combined  || false,
+      combined_bets: pick.combined_bets || [{ ...EMPTY_COMBINED_BET }, { ...EMPTY_COMBINED_BET }],
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -171,7 +178,8 @@ function PicksAdmin() {
     e.preventDefault()
     setSubmitting(true)
 
-    let finalOdds, finalPickText, finalLegs
+    let finalOdds, finalPickText, finalLegs, finalCombinedBets
+
     if (form.is_parlay) {
       const validLegs = form.parlay_legs.filter(l => l.match.trim() && l.pick.trim() && l.odds.trim())
       if (validLegs.length < 2) {
@@ -182,10 +190,24 @@ function PicksAdmin() {
       finalOdds = calcParlayTotalOdds(validLegs)
       finalPickText = `Parlay ${validLegs.length} patas`
       finalLegs = validLegs
+      finalCombinedBets = null
+    } else if (form.is_combined) {
+      const validBets = form.combined_bets.filter(b => b.market.trim() && b.selection.trim() && b.odds.trim())
+      if (validBets.length < 2) {
+        showToast('Una combinada necesita al menos 2 selecciones completas')
+        setSubmitting(false)
+        return
+      }
+      finalOdds = calcParlayTotalOdds(validBets.map(b => ({ odds: b.odds })))
+      const selectionNames = validBets.map(b => b.selection).join(' + ')
+      finalPickText = `Combinada ${validBets.length} sel.: ${selectionNames}`
+      finalLegs = null
+      finalCombinedBets = validBets
     } else {
       finalOdds = americanToDecimal(form.odds) ?? parseFloat(form.odds)
       finalPickText = form.pick_text
       finalLegs = null
+      finalCombinedBets = null
     }
 
     const payload = {
@@ -198,6 +220,8 @@ function PicksAdmin() {
       is_free:       form.is_free,
       is_parlay:     form.is_parlay,
       parlay_legs:   finalLegs,
+      is_combined:   form.is_combined,
+      combined_bets: finalCombinedBets,
     }
 
     if (editingPick) {
@@ -260,21 +284,128 @@ function PicksAdmin() {
               <input value={form.match_name} onChange={e => field('match_name', e.target.value)} required placeholder={form.is_parlay ? 'Parlay Miércoles' : 'Real Madrid vs Barcelona'} className="input-style" />
             </Field>
 
-            {/* Parlay toggle */}
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <div
-                onClick={() => field('is_parlay', !form.is_parlay)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${form.is_parlay ? 'bg-orange-500' : 'bg-white/15'}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_parlay ? 'translate-x-5' : ''}`} />
-              </div>
-              <span className="text-sm text-white/70">
-                🔗 Es un parlay <span className="text-white/35">(múltiples selecciones combinadas)</span>
-              </span>
-            </label>
+            {/* Parlay toggle — hidden when combined is active */}
+            {!form.is_combined && (
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => field('is_parlay', !form.is_parlay)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${form.is_parlay ? 'bg-orange-500' : 'bg-white/15'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_parlay ? 'translate-x-5' : ''}`} />
+                </div>
+                <span className="text-sm text-white/70">
+                  🔗 Es un parlay <span className="text-white/35">(múltiples partidos)</span>
+                </span>
+              </label>
+            )}
 
-            {/* Pick / Parlay legs */}
-            {form.is_parlay ? (
+            {/* Combined toggle — hidden when parlay is active */}
+            {!form.is_parlay && (
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => field('is_combined', !form.is_combined)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${form.is_combined ? 'bg-blue-500' : 'bg-white/15'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.is_combined ? 'translate-x-5' : ''}`} />
+                </div>
+                <span className="text-sm text-white/70">
+                  🎯 Apuesta combinada <span className="text-white/35">(múltiples mercados del mismo partido)</span>
+                </span>
+              </label>
+            )}
+
+            {/* Pick / Parlay legs / Combined bets */}
+            {form.is_combined ? (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-white/40">Selecciones de la combinada * (mín. 2, máx. 5)</label>
+                  {form.combined_bets.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={() => field('combined_bets', [...form.combined_bets, { ...EMPTY_COMBINED_BET }])}
+                      className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <Plus size={12} /> Agregar selección
+                    </button>
+                  )}
+                </div>
+
+                {/* Header */}
+                <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: '120px 1fr 72px 76px 30px' }}>
+                  {['Mercado', 'Selección', 'Momio', 'Acum.', ''].map(h => (
+                    <span key={h} className="text-[10px] text-white/25 px-1">{h}</span>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  {form.combined_bets.map((bet, i) => {
+                    const runningDecimal = form.combined_bets.slice(0, i + 1).reduce((acc, b) => {
+                      if (!b.odds.trim()) return acc
+                      const d = americanToDecimal(b.odds) ?? parseFloat(b.odds)
+                      return acc * (isNaN(d) || !d ? 1 : d)
+                    }, 1)
+                    const hasOdds = form.combined_bets.slice(0, i + 1).some(b => b.odds.trim())
+
+                    return (
+                      <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: '120px 1fr 72px 76px 30px' }}>
+                        <select
+                          value={bet.market}
+                          onChange={e => { const bets = [...form.combined_bets]; bets[i] = { ...bets[i], market: e.target.value }; field('combined_bets', bets) }}
+                          className="input-style text-xs"
+                        >
+                          <option value="">Mercado...</option>
+                          {COMBINED_MARKETS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <input
+                          value={bet.selection}
+                          onChange={e => { const bets = [...form.combined_bets]; bets[i] = { ...bets[i], selection: e.target.value }; field('combined_bets', bets) }}
+                          placeholder="España gana"
+                          className="input-style text-xs"
+                        />
+                        <input
+                          value={bet.odds}
+                          onChange={e => { const bets = [...form.combined_bets]; bets[i] = { ...bets[i], odds: e.target.value }; field('combined_bets', bets) }}
+                          placeholder="-162"
+                          className="input-style text-xs"
+                        />
+                        <div className="px-2 py-2 rounded-lg bg-[#0A0A0A] border border-white/8 text-center">
+                          {hasOdds && runningDecimal > 1 ? (
+                            <div>
+                              <div className="text-xs font-bold text-blue-400">{decimalToAmerican(runningDecimal)}</div>
+                              <div className="text-[10px] text-white/25">{runningDecimal.toFixed(2)}x</div>
+                            </div>
+                          ) : <span className="text-white/20 text-xs">—</span>}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={form.combined_bets.length <= 2}
+                          onClick={() => field('combined_bets', form.combined_bets.filter((_, idx) => idx !== i))}
+                          className="flex items-center justify-center text-white/30 hover:text-red-400 transition-colors disabled:opacity-20"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Total preview */}
+                {(() => {
+                  const valid = form.combined_bets.filter(b => b.odds.trim())
+                  if (valid.length < 2) return null
+                  const total = calcParlayTotalOdds(valid.map(b => ({ odds: b.odds })))
+                  return (
+                    <div className="mt-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                      <div className="text-xs text-white/40 mb-1">Momio combinado ({valid.length} sel.) — se guardará en Supabase</div>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-2xl font-black text-blue-400">{decimalToAmerican(total)}</span>
+                        <span className="text-sm text-white/40">({total.toFixed(4)} decimal)</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            ) : form.is_parlay ? (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-white/40">Patas del parlay * (mín. 2)</label>
