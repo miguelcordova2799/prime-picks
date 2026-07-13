@@ -352,7 +352,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
                 </span>
               )}
             </div>
-            {pick.is_parlay && pick.parlay_legs?.length > 0 && (
+            {!locked && pick.is_parlay && pick.parlay_legs?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {pick.parlay_legs.map((leg, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
@@ -365,7 +365,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
                 ))}
               </div>
             )}
-            {pick.is_combined && pick.combined_bets?.length > 0 && (
+            {!locked && pick.is_combined && pick.combined_bets?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {pick.combined_bets.map((bet, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
@@ -385,7 +385,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
           </div>
         </div>
 
-        <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
+        {!locked && <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
           <div>
             <div className="text-xs text-white/35 mb-1">Pick</div>
             <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
@@ -410,9 +410,9 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
         <div className="px-4 pb-4">
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-        </div>
+        </div>}
 
-        {utility !== null && (
+        {!locked && utility !== null && (
           <div className="px-4 pb-3">
             <div className="text-xs text-white/35 mb-1">Utilidad</div>
             {pick.result === 'push' ? (
