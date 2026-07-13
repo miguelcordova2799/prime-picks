@@ -405,9 +405,9 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
             <div className="text-xs text-white/35 mb-1">Stake</div>
             <div className="text-sm font-semibold text-white/70">{stake}% del bank</div>
           </div>
-        </div>
+        </div>}
 
-        <div className="px-4 pb-4">
+        {!locked && <div className="px-4 pb-4">
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
         </div>}
