@@ -266,7 +266,6 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
   const alreadyUnlocked = isSubscribed || pick.is_free || (Array.isArray(trialPickIds) && trialPickIds.includes(pick.id))
   const isPending = pick.result === 'pending'
   const trialsLeft = trialLimit - (Array.isArray(trialPickIds) ? trialPickIds.length : 0)
-  // Resolved picks are never unlockable via trial — value is in seeing picks before they play
   const canUnlock = !alreadyUnlocked && isPending && trialsLeft > 0
   const locked = !alreadyUnlocked
   const [showShare, setShowShare] = useState(false)
@@ -333,6 +332,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
     )
   }
 
+  // Pick desbloqueado — mostrar contenido completo
   return (
     <>
       <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
@@ -352,7 +352,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
                 </span>
               )}
             </div>
-            {!locked && pick.is_parlay && pick.parlay_legs?.length > 0 && (
+            {pick.is_parlay && pick.parlay_legs?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {pick.parlay_legs.map((leg, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
@@ -365,7 +365,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
                 ))}
               </div>
             )}
-            {!locked && pick.is_combined && pick.combined_bets?.length > 0 && (
+            {pick.is_combined && pick.combined_bets?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {pick.combined_bets.map((bet, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
@@ -385,7 +385,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
           </div>
         </div>
 
-        {!locked && <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
+        <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
           <div>
             <div className="text-xs text-white/35 mb-1">Pick</div>
             <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
@@ -405,14 +405,14 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
             <div className="text-xs text-white/35 mb-1">Stake</div>
             <div className="text-sm font-semibold text-white/70">{stake}% del bank</div>
           </div>
-        </div>}
+        </div>
 
-        {!locked && <div className="px-4 pb-4">
+        <div className="px-4 pb-4">
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-        </div>}
+        </div>
 
-        {!locked && utility !== null && (
+        {utility !== null && (
           <div className="px-4 pb-3">
             <div className="text-xs text-white/35 mb-1">Utilidad</div>
             {pick.result === 'push' ? (
@@ -443,7 +443,6 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
     </>
   )
 }
-
 /* ── SHARE MODAL ───────────────────────────────────────────── */
 function wrapText(ctx, text, maxWidth) {
   const words = text.split(' ')
