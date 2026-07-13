@@ -105,11 +105,11 @@ export default function Dashboard() {
   }
 
   async function fetchStats() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('picks')
       .select('result, odds, stake_percent')
-      .neq('result', 'pending')
-    if (!data) return
+      .in('result', ['won', 'lost', 'push'])
+    if (error || !data) { console.error('fetchStats error:', error); return }
     const wins    = data.filter(p => p.result === 'won').length
     const losses  = data.filter(p => p.result === 'lost').length
     const pushes  = data.filter(p => p.result === 'push').length
@@ -176,7 +176,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <StatCard icon={Trophy} label="Ganados" value={stats.wins} color="text-[#00D964]" />
           <StatCard icon={Target} label="Perdidos" value={stats.losses} color="text-red-400" />
-          <StatCard icon={TrendingUp} label="Push ↩️" value={stats.pushes} color="text-amber-400" />
+          <StatCard icon={TrendingUp} label="Push ↩️" value={stats.pushes ?? 0} color="text-amber-400" />
           <StatCard
             icon={TrendingUp}
             label="Utilidad"
@@ -219,7 +219,11 @@ export default function Dashboard() {
             )
           )}
 
-          {picks.length === 0 ? (
+          {trialPickIds === null ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : picks.length === 0 ? (
             <div className="text-center py-16 text-white/30">
               <Target size={40} className="mx-auto mb-3 opacity-30" />
               <p>Aún no hay picks publicados</p>
@@ -259,9 +263,9 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }) {
-  const alreadyUnlocked = isSubscribed || pick.is_free || trialPickIds.includes(pick.id)
+  const alreadyUnlocked = isSubscribed || pick.is_free || (Array.isArray(trialPickIds) && trialPickIds.includes(pick.id))
   const isPending = pick.result === 'pending'
-  const trialsLeft = trialLimit - trialPickIds.length
+  const trialsLeft = trialLimit - (Array.isArray(trialPickIds) ? trialPickIds.length : 0)
   // Resolved picks are never unlockable via trial — value is in seeing picks before they play
   const canUnlock = !alreadyUnlocked && isPending && trialsLeft > 0
   const locked = !alreadyUnlocked
