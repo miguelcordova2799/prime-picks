@@ -50,7 +50,7 @@ export default function Dashboard() {
     if (authLoading || loading || !user) return
     if (hasFullAccess) { setTrialPickIds([]); return }
     fetchTrialIds()
-  }, [authLoading, loading, user]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authLoading, loading, user, hasFullAccess])
 
   async function fetchTrialIds() {
     const { data, error } = await supabase
@@ -120,7 +120,7 @@ export default function Dashboard() {
       if (p.result === 'lost') return sum - stake
       return sum // push: +0
     }, 0)
-    setStats({ wins, losses, pushes, utility: Math.round(utility * 100) / 100, total: wins + losses })
+    setStats({ wins, losses, pushes, utility: Math.round(utility * 100) / 100, total: wins + losses + pushes })
   }
 
   async function fetchHistory() {
@@ -183,7 +183,7 @@ export default function Dashboard() {
             value={`${stats.utility >= 0 ? '+' : ''}${Number(stats.utility).toFixed(2)}%`}
             color={stats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
           />
-          <StatCard icon={TrendingUp} label="Total picks" value={stats.wins + stats.losses} color="text-white/70" />
+          <StatCard icon={TrendingUp} label="Total picks" value={stats.total} color="text-white/70" />
         </div>
 
         {/* Picks list */}
