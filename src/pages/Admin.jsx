@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users, Settings } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users, Settings, Calendar } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
 import { useAppSettings } from '../context/AppSettingsContext'
 
@@ -71,6 +71,7 @@ export default function Admin() {
           />
           <TabBtn active={tab === 'cortesia'} onClick={() => setTab('cortesia')} icon={Users} label="Cortesía" />
           <TabBtn active={tab === 'config'} onClick={() => setTab('config')} icon={Settings} label="Config" />
+          <TabBtn active={tab === 'mensual'} onClick={() => setTab('mensual')} icon={Calendar} label="Mensual" />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
@@ -80,6 +81,7 @@ export default function Admin() {
         {tab === 'mensajes' && <MensajesAdmin />}
         {tab === 'cortesia' && <CourtesyAdmin />}
         {tab === 'config' && <ConfigAdmin />}
+        {tab === 'mensual' && <ControlMensualAdmin />}
       </div>
 
       <style>{`
@@ -1503,9 +1505,7 @@ function ToggleRow({ label, desc, on, onToggle }) {
         <p className="text-sm font-semibold text-white">{label}</p>
         {desc && <p className="text-xs text-white/40 mt-0.5">{desc}</p>}
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
+      <button type="button" onClick={onToggle}
         className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 ${on ? 'bg-[#00D964]' : 'bg-white/20'}`}
       >
         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-0'}`} />
@@ -1514,141 +1514,542 @@ function ToggleRow({ label, desc, on, onToggle }) {
   )
 }
 
-function ConfigAdmin() {
-  const { settings, setNoticiasEnabled, refreshSettings } = useAppSettings()
+const CFG_INP = 'w-full px-4 py-2.5 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors'
+const CFG_LBL = 'block text-xs text-white/40 mb-1.5'
 
-  const DEFAULTS = {
-    stats_fecha_inicio: '24 jun 2026',
-    hero_titulo: 'Apuesta con inteligencia',
-    hero_subtitulo: 'Picks deportivos con análisis real, edge detectado y récord transparente.',
-    plan_precio: '399',
-    plan_nombre: 'Prime Picks',
-    trial_picks: '2',
-    noticias_enabled: 'true',
-    banner_trial: 'true',
-    show_features: 'true',
-  }
+function SaveRow({ saving, onSave, msg }) {
+  return (
+    <div className="flex items-center gap-3 pt-4 border-t border-white/8 mt-2">
+      <button onClick={onSave} disabled={saving}
+        className="px-4 py-2 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+      >
+        {saving ? 'Guardando...' : '💾 Guardar'}
+      </button>
+      {msg && <span className={`text-sm font-medium ${msg.startsWith('Error') ? 'text-red-400' : 'text-[#00D964]'}`}>{msg}</span>}
+    </div>
+  )
+}
 
-  const [form, setForm] = useState(DEFAULTS)
+async function upsertSettings(pairs) {
+  const rows = Object.entries(pairs).map(([key, value]) => ({ key, value }))
+  return supabase.from('app_settings').upsert(rows, { onConflict: 'key' })
+}
+
+function HeroSection() {
+  const { settings, refreshSettings } = useAppSettings()
+  const [form, setForm] = useState({ hero_titulo: 'Apuesta con inteligencia', hero_subtitulo: 'Picks deportivos con análisis real, edge detectado y récord transparente.', hero_cta: 'Ver picks de hoy →' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-
   useEffect(() => {
-    if (Object.keys(settings).length === 0) return
-    setForm(prev => {
-      const update = {}
-      Object.keys(prev).forEach(k => {
-        if (settings[k] !== undefined) update[k] = settings[k]
-      })
-      return { ...prev, ...update }
-    })
+    const keys = ['hero_titulo', 'hero_subtitulo', 'hero_cta']
+    const u = {}; keys.forEach(k => { if (settings[k] !== undefined) u[k] = settings[k] })
+    if (Object.keys(u).length) setForm(f => ({ ...f, ...u }))
   }, [settings])
-
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
-  function toggleBool(k) { setForm(f => ({ ...f, [k]: f[k] === 'true' ? 'false' : 'true' })) }
-
-  async function handleSave() {
-    setSaving(true)
-    setMsg('')
-    const rows = Object.entries(form).map(([key, value]) => ({ key, value }))
-    const { error } = await supabase
-      .from('app_settings')
-      .upsert(rows, { onConflict: 'key' })
+  async function save() {
+    setSaving(true); setMsg('')
+    const { error } = await upsertSettings(form)
     setSaving(false)
-    if (error) {
-      setMsg('Error: ' + error.message)
-    } else {
-      setNoticiasEnabled(form.noticias_enabled === 'true')
-      await refreshSettings()
-      setMsg('✅ Página actualizada correctamente')
-      setTimeout(() => setMsg(''), 4000)
-    }
+    if (error) setMsg('Error: ' + error.message)
+    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
   }
+  const s = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+      <h3 className="font-bold text-white">🏆 Hero (portada)</h3>
+      <div>
+        <label className={CFG_LBL}>Título principal</label>
+        <input className={CFG_INP} value={form.hero_titulo} onChange={s('hero_titulo')} placeholder="Apuesta con inteligencia" />
+        <p className="text-xs text-white/25 mt-1">La última palabra aparece en verde.</p>
+      </div>
+      <div>
+        <label className={CFG_LBL}>Subtítulo</label>
+        <textarea className={CFG_INP + ' resize-none'} rows={3} value={form.hero_subtitulo} onChange={s('hero_subtitulo')} />
+      </div>
+      <div>
+        <label className={CFG_LBL}>Texto del botón CTA</label>
+        <input className={CFG_INP} value={form.hero_cta} onChange={s('hero_cta')} placeholder="Ver picks de hoy →" />
+      </div>
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
 
-  const inp = 'w-full px-4 py-2.5 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors'
-  const lbl = 'block text-xs text-white/40 mb-1.5'
+function EstadisticasSection() {
+  const { settings, refreshSettings } = useAppSettings()
+  const [val, setVal] = useState('24 jun 2026')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { if (settings.stats_fecha_inicio !== undefined) setVal(settings.stats_fecha_inicio) }, [settings])
+  async function save() {
+    setSaving(true); setMsg('')
+    const { error } = await upsertSettings({ stats_fecha_inicio: val })
+    setSaving(false)
+    if (error) setMsg('Error: ' + error.message)
+    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
+  }
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+      <h3 className="font-bold text-white">📊 Estadísticas</h3>
+      <div>
+        <label className={CFG_LBL}>Fecha de inicio (aparece bajo el % de acierto)</label>
+        <input className={CFG_INP} value={val} onChange={e => setVal(e.target.value)} placeholder="24 jun 2026" />
+      </div>
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
 
+function QuienesSomosSection() {
+  const { settings, refreshSettings } = useAppSettings()
+  const DEFAULT = 'Prime Picks nació con una misión clara: hacer que apostar sea rentable, inteligente y responsable. No somos adivinos ni vendemos sueños — somos analistas que usan estadística, probabilidad y datos reales para encontrar ventaja real contra las casas de apuestas.'
+  const [val, setVal] = useState(DEFAULT)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { if (settings.quienes_somos_texto !== undefined) setVal(settings.quienes_somos_texto) }, [settings])
+  async function save() {
+    setSaving(true); setMsg('')
+    const { error } = await upsertSettings({ quienes_somos_texto: val })
+    setSaving(false)
+    if (error) setMsg('Error: ' + error.message)
+    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
+  }
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+      <h3 className="font-bold text-white">🎯 Quiénes somos</h3>
+      <div>
+        <label className={CFG_LBL}>Descripción (aparece en la sección ¿Quiénes somos? de la landing)</label>
+        <textarea className={CFG_INP + ' resize-none'} rows={6} value={val} onChange={e => setVal(e.target.value)} />
+      </div>
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
+
+const SERVICIO_DEFAULTS = [
+  { titulo: 'Análisis estadístico', desc: 'Cada pick respaldado por datos reales, estadísticas avanzadas y análisis profundo de cada partido.' },
+  { titulo: 'Picks verificados con historial público', desc: 'Todos nuestros resultados son públicos y verificables. Sin trampa, sin mentira — solo transparencia total.' },
+  { titulo: 'Control de apuestas', desc: 'Lleva un registro profesional de tus apuestas con stake, utilidad y rendimiento acumulado en % del bank.' },
+  { titulo: 'Aprende a apostar mejor', desc: 'La mejor plataforma para aprender sobre apuestas deportivas. Value betting, bankroll management y más.' },
+  { titulo: 'Atención al cliente 24/7', desc: 'Nuestro equipo está disponible para resolver tus dudas en cualquier momento. Siempre cerca de ti.' },
+  { titulo: 'Juego responsable', desc: 'Apostamos por el juego responsable. Te enseñamos a apostar con disciplina, criterio y sin riesgos innecesarios.' },
+]
+
+function ServiciosSection() {
+  const { settings, refreshSettings } = useAppSettings()
+  const buildDefault = () => Object.fromEntries(
+    SERVICIO_DEFAULTS.flatMap((s, i) => [[`servicio_${i+1}_titulo`, s.titulo], [`servicio_${i+1}_desc`, s.desc]])
+  )
+  const [form, setForm] = useState(buildDefault)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    const u = {}; Object.keys(form).forEach(k => { if (settings[k] !== undefined) u[k] = settings[k] })
+    if (Object.keys(u).length) setForm(f => ({ ...f, ...u }))
+  }, [settings])
+  async function save() {
+    setSaving(true); setMsg('')
+    const { error } = await upsertSettings(form)
+    setSaving(false)
+    if (error) setMsg('Error: ' + error.message)
+    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
+  }
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-5">
+      <h3 className="font-bold text-white">🛠️ Nuestros servicios</h3>
+      {[1,2,3,4,5,6].map(i => (
+        <div key={i} className="space-y-2 pb-5 border-b border-white/6 last:border-0 last:pb-0">
+          <p className="text-xs text-white/50 font-semibold uppercase tracking-wide">Servicio {i}</p>
+          <div>
+            <label className={CFG_LBL}>Título</label>
+            <input className={CFG_INP} value={form[`servicio_${i}_titulo`] || ''} onChange={e => setForm(f => ({ ...f, [`servicio_${i}_titulo`]: e.target.value }))} />
+          </div>
+          <div>
+            <label className={CFG_LBL}>Descripción</label>
+            <textarea className={CFG_INP + ' resize-none'} rows={2} value={form[`servicio_${i}_desc`] || ''} onChange={e => setForm(f => ({ ...f, [`servicio_${i}_desc`]: e.target.value }))} />
+          </div>
+        </div>
+      ))}
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
+
+function PlanSection() {
+  const { settings, refreshSettings } = useAppSettings()
+  const DEFAULT_FEATS = ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Noticias del Mundial', 'Cancela cuando quieras', '']
+  const [form, setForm] = useState({ plan_nombre: 'Prime Picks', plan_precio: '399', plan_desc: 'Acceso completo a todos los picks, análisis e historial.', trial_picks: '2' })
+  const [features, setFeatures] = useState(DEFAULT_FEATS)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    const keys = ['plan_nombre', 'plan_precio', 'plan_desc', 'trial_picks']
+    const u = {}; keys.forEach(k => { if (settings[k] !== undefined) u[k] = settings[k] })
+    if (Object.keys(u).length) setForm(f => ({ ...f, ...u }))
+    if (settings.plan_features) {
+      try {
+        const arr = JSON.parse(settings.plan_features)
+        setFeatures([...arr, '', '', '', '', '', ''].slice(0, 6))
+      } catch {}
+    }
+  }, [settings])
+  async function save() {
+    setSaving(true); setMsg('')
+    const cleanFeats = features.filter(f => f.trim())
+    const { error } = await upsertSettings({ ...form, plan_features: JSON.stringify(cleanFeats) })
+    setSaving(false)
+    if (error) setMsg('Error: ' + error.message)
+    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
+  }
+  const sf = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+      <h3 className="font-bold text-white">💰 Plan y precios</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={CFG_LBL}>Nombre del plan</label>
+          <input className={CFG_INP} value={form.plan_nombre} onChange={sf('plan_nombre')} placeholder="Prime Picks" />
+        </div>
+        <div>
+          <label className={CFG_LBL}>Precio mensual (MXN, sin $)</label>
+          <input className={CFG_INP} type="number" min="1" value={form.plan_precio} onChange={sf('plan_precio')} placeholder="399" />
+        </div>
+      </div>
+      <div>
+        <label className={CFG_LBL}>Descripción del plan</label>
+        <input className={CFG_INP} value={form.plan_desc} onChange={sf('plan_desc')} placeholder="Acceso completo a todos los picks..." />
+      </div>
+      <div>
+        <label className={CFG_LBL}>Features del plan (hasta 6, dejar vacío para omitir)</label>
+        <div className="space-y-2">
+          {[0,1,2,3,4,5].map(i => (
+            <input key={i} className={CFG_INP} value={features[i] || ''} onChange={e => setFeatures(prev => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder={`Feature ${i+1}`} />
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className={CFG_LBL}>Picks gratis por usuario nuevo (trial, 1–5)</label>
+        <input className={CFG_INP} type="number" min="1" max="5" value={form.trial_picks} onChange={sf('trial_picks')} placeholder="2" />
+      </div>
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
+
+function TogglesSection() {
+  const { settings, setNoticiasEnabled, refreshSettings } = useAppSettings()
+  const [form, setForm] = useState({ noticias_enabled: 'true', banner_trial: 'true', show_features: 'true', show_quienes_somos: 'true' })
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    const keys = ['noticias_enabled', 'banner_trial', 'show_features', 'show_quienes_somos']
+    const u = {}; keys.forEach(k => { if (settings[k] !== undefined) u[k] = settings[k] })
+    if (Object.keys(u).length) setForm(f => ({ ...f, ...u }))
+  }, [settings])
+  function toggle(k) { setForm(f => ({ ...f, [k]: f[k] === 'true' ? 'false' : 'true' })) }
+  async function save() {
+    setSaving(true); setMsg('')
+    const { error } = await upsertSettings(form)
+    setSaving(false)
+    if (error) setMsg('Error: ' + error.message)
+    else { setNoticiasEnabled(form.noticias_enabled === 'true'); await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
+  }
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-3">
+      <h3 className="font-bold text-white mb-2">🔔 Visibilidad de secciones</h3>
+      <ToggleRow label="Sección de Noticias" desc="Muestra el enlace Noticias en el navbar y habilita /noticias" on={form.noticias_enabled === 'true'} onToggle={() => toggle('noticias_enabled')} />
+      <ToggleRow label="Banner de prueba gratis" desc="Muestra el banner de picks GRATIS en la landing" on={form.banner_trial === 'true'} onToggle={() => toggle('banner_trial')} />
+      <ToggleRow label="Sección ¿Por qué Prime Picks?" desc="Muestra los 3 cards de features en la landing" on={form.show_features === 'true'} onToggle={() => toggle('show_features')} />
+      <ToggleRow label="Sección ¿Quiénes somos?" desc="Muestra la sección de descripción del equipo en la landing" on={form.show_quienes_somos === 'true'} onToggle={() => toggle('show_quienes_somos')} />
+      <SaveRow saving={saving} onSave={save} msg={msg} />
+    </div>
+  )
+}
+
+function ConfigAdmin() {
   return (
     <div className="space-y-6 max-w-2xl">
+      <HeroSection />
+      <EstadisticasSection />
+      <QuienesSomosSection />
+      <ServiciosSection />
+      <PlanSection />
+      <TogglesSection />
+    </div>
+  )
+}
 
-      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-white">📊 Estadísticas</h3>
-        <div>
-          <label className={lbl}>Fecha de inicio (aparece bajo el % de acierto)</label>
-          <input className={inp} value={form.stats_fecha_inicio} onChange={e => set('stats_fecha_inicio', e.target.value)} placeholder="24 jun 2026" />
+// ── CONTROL MENSUAL ────────────────────────────────────────────
+
+function computeMonthStats(ps) {
+  const won = ps.filter(p => p.result === 'won').length
+  const lost = ps.filter(p => p.result === 'lost').length
+  const push = ps.filter(p => p.result === 'push').length
+  const pending = ps.filter(p => p.result === 'pending').length
+  const resolved = ps.filter(p => p.result !== 'pending')
+  const hitRate = (won + lost) > 0 ? (won / (won + lost) * 100).toFixed(1) : '—'
+  const utility = resolved.reduce((acc, p) => {
+    const s = parseFloat(p.stake_percent) || 2
+    return acc + (p.result === 'won' ? s * (parseFloat(p.odds) - 1) : p.result === 'lost' ? -s : 0)
+  }, 0)
+  const validOdds = resolved.map(p => parseFloat(p.odds) || 0).filter(v => v > 0)
+  const avgOdds = validOdds.length > 0 ? (validOdds.reduce((a, b) => a + b, 0) / validOdds.length).toFixed(2) : '—'
+  let best = null, worst = null
+  resolved.forEach(p => {
+    const s = parseFloat(p.stake_percent) || 2
+    const u = p.result === 'won' ? s * (parseFloat(p.odds) - 1) : p.result === 'lost' ? -s : 0
+    if (best === null || u > best.u) best = { ...p, u }
+    if (worst === null || u < worst.u) worst = { ...p, u }
+  })
+  return { won, lost, push, pending, total: ps.length, hitRate, utility, avgOdds, best, worst }
+}
+
+function getMonthKey(iso) {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getMonthLabel(key) {
+  const [year, month] = key.split('-')
+  const d = new Date(parseInt(year), parseInt(month) - 1, 1)
+  const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+function MensualCard({ label, value, color = 'text-white' }) {
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-xl p-4 text-center">
+      <p className="text-xs text-white/40 mb-1">{label}</p>
+      <p className={`text-2xl font-black ${color}`}>{value}</p>
+    </div>
+  )
+}
+
+function ControlMensualAdmin() {
+  const [picks, setPicks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(null)
+
+  useEffect(() => {
+    supabase
+      .from('picks')
+      .select('id, match_name, pick_text, odds, stake_percent, result, published_at, bookmaker, is_parlay')
+      .order('published_at', { ascending: false })
+      .then(({ data }) => { setPicks(data || []); setLoading(false) })
+  }, [])
+
+  const months = useMemo(() => {
+    const seen = new Set(); const list = []
+    picks.forEach(p => {
+      const key = getMonthKey(p.published_at)
+      if (!seen.has(key)) { seen.add(key); list.push(key) }
+    })
+    return list
+  }, [picks])
+
+  useEffect(() => {
+    if (!selectedMonth && months.length > 0) setSelectedMonth(months[0])
+  }, [months, selectedMonth])
+
+  const monthPicks = useMemo(() => {
+    if (!selectedMonth) return []
+    return picks.filter(p => getMonthKey(p.published_at) === selectedMonth)
+  }, [picks, selectedMonth])
+
+  const stats = useMemo(() => computeMonthStats(monthPicks), [monthPicks])
+
+  const tableData = useMemo(() => {
+    const sorted = [...monthPicks].sort((a, b) => new Date(a.published_at) - new Date(b.published_at))
+    let acc = 0
+    return sorted.map((p, i) => {
+      const s = parseFloat(p.stake_percent) || 2
+      const u = p.result === 'won' ? s * (parseFloat(p.odds) - 1) : p.result === 'lost' ? -s : p.result === 'push' ? 0 : null
+      if (u !== null) acc += u
+      return { ...p, util: u, accum: u !== null ? acc : null, rowNum: i + 1 }
+    })
+  }, [monthPicks])
+
+  const monthlyComparison = useMemo(() => {
+    return months.map(key => {
+      const ps = picks.filter(p => getMonthKey(p.published_at) === key)
+      return { key, label: getMonthLabel(key), ...computeMonthStats(ps) }
+    })
+  }, [picks, months])
+
+  function exportCSV() {
+    const header = ['#', 'Fecha', 'Partido', 'Pick', 'Momio', '% Bank', 'Resultado', 'Util %', 'Acum %']
+    const rows = tableData.map(p => [
+      p.rowNum,
+      new Date(p.published_at).toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' }),
+      p.match_name, p.pick_text, p.odds, p.stake_percent, p.result,
+      p.util !== null ? p.util.toFixed(2) : '',
+      p.accum !== null ? p.accum.toFixed(2) : '',
+    ])
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `picks-${selectedMonth}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-8 h-8 border-2 border-[#00D964] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (months.length === 0) return (
+    <div className="text-center py-16 text-white/30">
+      <Calendar size={40} className="mx-auto mb-3 opacity-30" />
+      <p>No hay picks publicados todavía.</p>
+    </div>
+  )
+
+  const RMAP = { won: 'Ganado', lost: 'Perdido', push: 'Push', pending: 'Pend.' }
+  const RCOL = { won: 'text-[#00D964]', lost: 'text-red-400', push: 'text-amber-400', pending: 'text-yellow-400' }
+
+  return (
+    <div className="space-y-6">
+
+      {/* Month selector */}
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-4">
+        <p className="text-xs text-white/40 mb-3 font-semibold uppercase tracking-wide">Selecciona el mes</p>
+        <div className="flex flex-wrap gap-2">
+          {months.map(key => (
+            <button key={key} onClick={() => setSelectedMonth(key)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${selectedMonth === key ? 'bg-[#00D964] text-black' : 'bg-white/8 text-white/60 hover:bg-white/12 hover:text-white'}`}
+            >
+              {getMonthLabel(key)}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-white">🎯 Hero (portada)</h3>
-        <div>
-          <label className={lbl}>Título principal</label>
-          <input className={inp} value={form.hero_titulo} onChange={e => set('hero_titulo', e.target.value)} placeholder="Apuesta con inteligencia" />
-          <p className="text-xs text-white/25 mt-1">La última palabra se muestra en verde.</p>
-        </div>
-        <div>
-          <label className={lbl}>Subtítulo</label>
-          <textarea className={inp + ' resize-none'} rows={3} value={form.hero_subtitulo} onChange={e => set('hero_subtitulo', e.target.value)} placeholder="Picks deportivos con análisis real..." />
-        </div>
-      </div>
-
-      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-white">💰 Planes y precios</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={lbl}>Nombre del plan</label>
-            <input className={inp} value={form.plan_nombre} onChange={e => set('plan_nombre', e.target.value)} placeholder="Prime Picks" />
+      {selectedMonth && (
+        <>
+          {/* Summary grids */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MensualCard label="Total picks" value={stats.total} color="text-white" />
+            <MensualCard label="Ganados" value={stats.won} color="text-[#00D964]" />
+            <MensualCard label="Perdidos" value={stats.lost} color="text-red-400" />
+            <MensualCard label="Push" value={stats.push} color="text-amber-400" />
           </div>
-          <div>
-            <label className={lbl}>Precio (MXN, sin $)</label>
-            <input className={inp} type="number" min="1" value={form.plan_precio} onChange={e => set('plan_precio', e.target.value)} placeholder="399" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MensualCard label="% Acierto" value={stats.hitRate !== '—' ? `${stats.hitRate}%` : '—'} color="text-[#00D964]" />
+            <MensualCard label="Utilidad mes" value={`${stats.utility >= 0 ? '+' : ''}${stats.utility.toFixed(2)}%`} color={stats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'} />
+            <MensualCard label="Momio prom." value={stats.avgOdds} color="text-white" />
+            <MensualCard label="Pendientes" value={stats.pending} color="text-yellow-400" />
+          </div>
+
+          {/* Best / Worst */}
+          {(stats.best || stats.worst) && (
+            <div className="grid md:grid-cols-2 gap-3">
+              {stats.best && (
+                <div className="bg-[#111111] border border-[#00D964]/25 rounded-xl p-4">
+                  <p className="text-xs text-[#00D964] font-bold mb-1">🏆 Mejor pick del mes</p>
+                  <p className="text-sm font-semibold text-white truncate">{stats.best.match_name}</p>
+                  <p className="text-xs text-white/50 mt-0.5">{stats.best.pick_text} · {stats.best.odds} · <span className="text-[#00D964] font-semibold">+{stats.best.u.toFixed(2)}%</span></p>
+                </div>
+              )}
+              {stats.worst && stats.worst.id !== stats.best?.id && (
+                <div className="bg-[#111111] border border-red-500/20 rounded-xl p-4">
+                  <p className="text-xs text-red-400 font-bold mb-1">📉 Pick más costoso del mes</p>
+                  <p className="text-sm font-semibold text-white truncate">{stats.worst.match_name}</p>
+                  <p className="text-xs text-white/50 mt-0.5">{stats.worst.pick_text} · {stats.worst.odds} · <span className="text-red-400 font-semibold">{stats.worst.u.toFixed(2)}%</span></p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Export */}
+          <div className="flex justify-end">
+            <button onClick={exportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-white/8 border border-white/12 text-white/70 hover:text-white hover:bg-white/12 rounded-lg text-sm transition-colors"
+            >
+              <Download size={14} /> Exportar mes CSV
+            </button>
+          </div>
+
+          {/* Detail table */}
+          <div className="bg-[#111111] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+              <h3 className="font-bold text-white text-sm">Detalle — {getMonthLabel(selectedMonth)}</h3>
+              <span className="text-xs text-white/40">{tableData.length} picks</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-white/8 bg-white/2">
+                    {['#', 'Fecha', 'Partido', 'Pick', 'Momio', '% Bank', 'Resultado', 'Util %', 'Acum %'].map(h => (
+                      <th key={h} className="px-3 py-2.5 text-left text-white/40 font-semibold whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableData.length === 0 ? (
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-white/30">Sin picks este mes</td></tr>
+                  ) : tableData.map(p => (
+                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                      <td className="px-3 py-3 text-white/30">{p.rowNum}</td>
+                      <td className="px-3 py-3 text-white/50 whitespace-nowrap">
+                        {new Date(p.published_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' })}
+                      </td>
+                      <td className="px-3 py-3 text-white font-medium max-w-[130px]"><span className="truncate block">{p.match_name}</span></td>
+                      <td className="px-3 py-3 text-white/70 max-w-[110px]"><span className="truncate block">{p.pick_text}</span></td>
+                      <td className="px-3 py-3 text-white/70">{p.odds}</td>
+                      <td className="px-3 py-3 text-white/70">{p.stake_percent}%</td>
+                      <td className={`px-3 py-3 font-semibold ${RCOL[p.result] || 'text-white/40'}`}>{RMAP[p.result] || p.result}</td>
+                      <td className={`px-3 py-3 font-semibold ${p.util === null ? 'text-white/25' : p.util >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                        {p.util !== null ? `${p.util >= 0 ? '+' : ''}${p.util.toFixed(2)}%` : '—'}
+                      </td>
+                      <td className={`px-3 py-3 font-bold ${p.accum === null ? 'text-white/25' : p.accum >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                        {p.accum !== null ? `${p.accum >= 0 ? '+' : ''}${p.accum.toFixed(2)}%` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Monthly comparison */}
+      {monthlyComparison.length > 1 && (
+        <div className="bg-[#111111] border border-white/8 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/8">
+            <h3 className="font-bold text-white text-sm">Comparativa de meses</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/8 bg-white/2">
+                  {['Mes', 'Picks', 'Gan.', 'Per.', 'Push', '% Acierto', 'Utilidad %'].map(h => (
+                    <th key={h} className="px-3 py-2.5 text-left text-white/40 font-semibold whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyComparison.map(m => (
+                  <tr key={m.key} onClick={() => setSelectedMonth(m.key)}
+                    className={`border-b border-white/5 cursor-pointer transition-colors ${selectedMonth === m.key ? 'bg-[#00D964]/6' : 'hover:bg-white/3'}`}
+                  >
+                    <td className="px-3 py-3 text-white font-semibold">{m.label}</td>
+                    <td className="px-3 py-3 text-white/70">{m.total}</td>
+                    <td className="px-3 py-3 text-[#00D964] font-semibold">{m.won}</td>
+                    <td className="px-3 py-3 text-red-400 font-semibold">{m.lost}</td>
+                    <td className="px-3 py-3 text-amber-400 font-semibold">{m.push}</td>
+                    <td className="px-3 py-3 text-white/70">{m.hitRate !== '—' ? `${m.hitRate}%` : '—'}</td>
+                    <td className={`px-3 py-3 font-bold ${m.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                      {`${m.utility >= 0 ? '+' : ''}${m.utility.toFixed(2)}%`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
-
-      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-white">🎁 Free Trial</h3>
-        <div>
-          <label className={lbl}>Picks gratis por usuario nuevo</label>
-          <input className={inp} type="number" min="1" max="5" value={form.trial_picks} onChange={e => set('trial_picks', e.target.value)} placeholder="2" />
-          <p className="text-xs text-white/25 mt-1">Cuántos picks puede desbloquear un usuario sin suscripción (1–5).</p>
-        </div>
-      </div>
-
-      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-3">
-        <h3 className="font-bold text-white mb-2">⚙️ Visibilidad de secciones</h3>
-        <ToggleRow
-          label="Sección de Noticias"
-          desc="Muestra el enlace Noticias en el navbar y habilita la ruta /noticias"
-          on={form.noticias_enabled === 'true'}
-          onToggle={() => toggleBool('noticias_enabled')}
-        />
-        <ToggleRow
-          label="Banner de prueba gratis"
-          desc={`Muestra el banner '🎁 Prueba ${form.trial_picks} picks GRATIS' en la landing`}
-          on={form.banner_trial === 'true'}
-          onToggle={() => toggleBool('banner_trial')}
-        />
-        <ToggleRow
-          label="Sección ¿Por qué Prime Picks?"
-          desc="Muestra los 3 cards de features en la landing"
-          on={form.show_features === 'true'}
-          onToggle={() => toggleBool('show_features')}
-        />
-      </div>
-
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-3 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-        >
-          {saving ? 'Guardando...' : '💾 Guardar cambios'}
-        </button>
-        {msg && (
-          <span className={`text-sm font-medium ${msg.startsWith('Error') ? 'text-red-400' : 'text-[#00D964]'}`}>{msg}</span>
-        )}
-      </div>
+      )}
 
     </div>
   )

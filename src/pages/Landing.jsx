@@ -308,16 +308,24 @@ export default function Landing() {
   // Dynamic settings overrides
   const showTrialBanner = settings?.banner_trial !== 'false'
   const showFeatures = settings?.show_features !== 'false'
+  const showQuienesSomos = settings?.show_quienes_somos !== 'false'
   const heroTitleRaw = settings?.hero_titulo || `${t.heroTitle1} ${t.heroTitle2}`
   const heroWords = heroTitleRaw.trim().split(/\s+/)
   const heroLine1 = heroWords.length > 1 ? heroWords.slice(0, -1).join(' ') : heroTitleRaw
   const heroLine2 = heroWords.length > 1 ? heroWords[heroWords.length - 1] : ''
   const statsFechaInicio = settings?.stats_fecha_inicio || t.stats[0].sub
+  const planFeatures = (() => { try { const a = JSON.parse(settings?.plan_features || '[]'); return a.length > 0 ? a : null } catch { return null } })()
   const resolvedPlan = {
     ...t.plans[0],
     name: settings?.plan_nombre || t.plans[0].name,
     price: settings?.plan_precio ? `$${settings.plan_precio}` : t.plans[0].price,
+    desc: settings?.plan_desc || t.plans[0].desc,
+    features: planFeatures || t.plans[0].features,
   }
+  const resolvedServices = t.services.map((s, i) => ({
+    title: settings?.[`servicio_${i+1}_titulo`] || s.title,
+    desc: settings?.[`servicio_${i+1}_desc`] || s.desc,
+  }))
   const trialBannerTitle = lang === 'es'
     ? `🎁 Prueba ${trialLimit} picks GRATIS antes de suscribirte`
     : `🎁 Try ${trialLimit} FREE picks before subscribing`
@@ -359,7 +367,7 @@ export default function Landing() {
               onClick={handlePicksClick}
               className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base"
             >
-              {t.heroCTA}
+              {settings?.hero_cta || t.heroCTA}
             </button>
             <a href="#pricing" className="px-8 py-4 border border-white/20 text-white rounded-xl hover:border-white/40 transition-colors text-base">
               {t.heroPlans}
@@ -388,6 +396,7 @@ export default function Landing() {
       )}
 
       {/* ── QUIÉNES SOMOS ── */}
+      {showQuienesSomos && (
       <section className="bg-[#111111] border-y border-white/8">
         <div className="max-w-6xl mx-auto px-4 py-20">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -413,12 +422,13 @@ export default function Landing() {
                 {t.aboutTitle}
               </h2>
               <p className="text-white/60 leading-relaxed text-base">
-                {t.aboutText}
+                {settings?.quienes_somos_texto || t.aboutText}
               </p>
             </div>
           </div>
         </div>
       </section>
+      )}
 
       {/* ── STATS BAR ── */}
       <section className="border-b border-white/8">
@@ -474,7 +484,7 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
-            {t.services.map(({ title, desc }, i) => {
+            {resolvedServices.map(({ title, desc }, i) => {
               const Icon = SERVICE_ICONS[i]
               return (
                 <div key={i} className="h-full bg-[#161616] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#00D964]/25 transition-colors">
