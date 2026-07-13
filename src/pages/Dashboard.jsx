@@ -238,7 +238,7 @@ export default function Dashboard() {
                   trialPickIds={trialPickIds}
                   trialLimit={trialLimit}
                   onUnlock={unlockPick}
-                  watermarkText={user?.email || 'primepicks.mx'}
+                  watermarkText={user?.email || ''}
                 />
               ))}
             </div>
@@ -263,7 +263,7 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, watermarkText = 'primepicks.mx' }) {
+function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, watermarkText = '' }) {
   const alreadyUnlocked = isSubscribed || pick.is_free || (Array.isArray(trialPickIds) && trialPickIds.includes(pick.id))
   const isPending = pick.result === 'pending'
   const trialsLeft = trialLimit - (Array.isArray(trialPickIds) ? trialPickIds.length : 0)
@@ -408,24 +408,18 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
           </div>
         </div>
 
-        <div className="px-4 pb-4" style={{ position: 'relative' }}>
+        <div className="px-4 pb-4" style={{position:'relative'}}>
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            pointerEvents: 'none', overflow: 'hidden',
-            display: 'flex', flexDirection: 'column',
-            justifyContent: 'space-around', alignItems: 'center', zIndex: 1,
-          }}>
-            {[...Array(4)].map((_, i) => (
-              <span key={i} style={{
-                transform: 'rotate(-30deg)',
-                color: 'rgba(255,255,255,0.07)',
-                fontSize: '11px', fontWeight: '500',
-                letterSpacing: '1px', whiteSpace: 'nowrap', userSelect: 'none',
-              }}>{watermarkText}</span>
-            ))}
-          </div>
+          {watermarkText && (
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,pointerEvents:'none',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'space-around',alignItems:'center',zIndex:1}}>
+              {[0,1,2,3].map(i => (
+                <span key={i} style={{transform:'rotate(-25deg)',color:'rgba(255,255,255,0.06)',fontSize:'10px',fontWeight:'600',letterSpacing:'2px',whiteSpace:'nowrap',userSelect:'none'}}>
+                  {watermarkText}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {utility !== null && (
