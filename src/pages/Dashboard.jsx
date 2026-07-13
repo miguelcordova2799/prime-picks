@@ -238,6 +238,7 @@ export default function Dashboard() {
                   trialPickIds={trialPickIds}
                   trialLimit={trialLimit}
                   onUnlock={unlockPick}
+                  watermarkText={user?.email || 'primepicks.mx'}
                 />
               ))}
             </div>
@@ -262,7 +263,7 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }) {
+function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, watermarkText = 'primepicks.mx' }) {
   const alreadyUnlocked = isSubscribed || pick.is_free || (Array.isArray(trialPickIds) && trialPickIds.includes(pick.id))
   const isPending = pick.result === 'pending'
   const trialsLeft = trialLimit - (Array.isArray(trialPickIds) ? trialPickIds.length : 0)
@@ -407,9 +408,24 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
           </div>
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-4" style={{ position: 'relative' }}>
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            pointerEvents: 'none', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column',
+            justifyContent: 'space-around', alignItems: 'center', zIndex: 1,
+          }}>
+            {[...Array(4)].map((_, i) => (
+              <span key={i} style={{
+                transform: 'rotate(-30deg)',
+                color: 'rgba(255,255,255,0.07)',
+                fontSize: '11px', fontWeight: '500',
+                letterSpacing: '1px', whiteSpace: 'nowrap', userSelect: 'none',
+              }}>{watermarkText}</span>
+            ))}
+          </div>
         </div>
 
         {utility !== null && (
@@ -439,7 +455,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }
         )}
       </div>
 
-      {showShare && <ShareModal pick={pick} onClose={() => setShowShare(false)} />}
+      {showShare && <ShareModal pick={pick} onClose={() => setShowShare(false)} userEmail={watermarkText} />}
     </>
   )
 }
@@ -461,7 +477,7 @@ function wrapText(ctx, text, maxWidth) {
   return lines
 }
 
-function ShareModal({ pick, onClose }) {
+function ShareModal({ pick, onClose, userEmail = 'primepicks.mx' }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -572,7 +588,16 @@ function ShareModal({ pick, onClose }) {
     ctx.fillStyle = 'rgba(255,255,255,0.38)'
     ctx.font = `50px ${font}`
     ctx.fillText('Picks deportivos con análisis real', CX, y)
-  }, [pick])
+
+    // Watermark: user email in bottom corner
+    ctx.save()
+    ctx.globalAlpha = 0.18
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `400 36px ${font}`
+    ctx.textAlign = 'right'
+    ctx.fillText(userEmail, W - 60, H - 60)
+    ctx.restore()
+  }, [pick, userEmail])
 
   const canShare = !!navigator.share && !!navigator.canShare
 
