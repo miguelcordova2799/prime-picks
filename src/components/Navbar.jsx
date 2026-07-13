@@ -14,7 +14,8 @@ const NAV_T = {
 export default function Navbar() {
   const { user, profile, isAdmin, isSubscribed, isCourtesy, hasFullAccess, signOut } = useAuth()
   const { lang, setLang } = useLang()
-  const { noticiasEnabled } = useAppSettings()
+  const { noticiasEnabled, settings } = useAppSettings()
+  const trialLimit = parseInt(settings?.trial_picks || '2', 10)
   const navigate = useNavigate()
   const location = useLocation()
   const t = NAV_T[lang]
@@ -57,7 +58,7 @@ export default function Navbar() {
   const trialUnlocked = (() => {
     try { return JSON.parse(profile?.trial_pick_ids || '[]') } catch { return [] }
   })()
-  const picksLeft = Math.max(0, 2 - trialUnlocked.length)
+  const picksLeft = Math.max(0, trialLimit - trialUnlocked.length)
 
   return (
     <nav className="border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-sm sticky top-0 z-50">

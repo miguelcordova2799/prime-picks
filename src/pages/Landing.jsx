@@ -4,6 +4,7 @@ import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, New
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
 import { useAuth } from '../context/AuthContext'
+import { useAppSettings } from '../context/AppSettingsContext'
 
 /* ── TRANSLATIONS ─────────────────────────────────────────── */
 const T = {
@@ -274,6 +275,8 @@ export default function Landing() {
   const { hitRate, utility, total, streak } = usePickStats()
   const { user, profile, hasFullAccess } = useAuth()
   const navigate = useNavigate()
+  const { settings } = useAppSettings()
+  const trialLimit = parseInt(settings?.trial_picks || '2', 10)
 
   function handlePicksClick() {
     if (!user) {
@@ -285,7 +288,7 @@ export default function Landing() {
       const unlocked = (() => {
         try { return JSON.parse(profile?.trial_pick_ids || '[]') } catch { return [] }
       })()
-      if (unlocked.length < 2) {
+      if (unlocked.length < trialLimit) {
         navigate('/dashboard')
       } else {
         document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
@@ -301,6 +304,23 @@ export default function Landing() {
   const STAT_LIVE = [fmtHit, fmtUtility, fmtTotal, fmtStreak]
 
   const t = T[lang]
+
+  // Dynamic settings overrides
+  const showTrialBanner = settings?.banner_trial !== 'false'
+  const showFeatures = settings?.show_features !== 'false'
+  const heroTitleRaw = settings?.hero_titulo || `${t.heroTitle1} ${t.heroTitle2}`
+  const heroWords = heroTitleRaw.trim().split(/\s+/)
+  const heroLine1 = heroWords.length > 1 ? heroWords.slice(0, -1).join(' ') : heroTitleRaw
+  const heroLine2 = heroWords.length > 1 ? heroWords[heroWords.length - 1] : ''
+  const statsFechaInicio = settings?.stats_fecha_inicio || t.stats[0].sub
+  const resolvedPlan = {
+    ...t.plans[0],
+    name: settings?.plan_nombre || t.plans[0].name,
+    price: settings?.plan_precio ? `$${settings.plan_precio}` : t.plans[0].price,
+  }
+  const trialBannerTitle = lang === 'es'
+    ? `🎁 Prueba ${trialLimit} picks GRATIS antes de suscribirte`
+    : `🎁 Try ${trialLimit} FREE picks before subscribing`
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
@@ -326,12 +346,12 @@ export default function Landing() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 leading-none">
-            {t.heroTitle1}
-            <span className="block text-[#00D964]">{t.heroTitle2}</span>
+            {heroLine1}
+            <span className="block text-[#00D964]">{heroLine2}</span>
           </h1>
 
           <p className="text-lg md:text-xl text-white/50 max-w-xl mx-auto mb-10 leading-relaxed">
-            {t.heroSub}
+            {settings?.hero_subtitulo || t.heroSub}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -349,11 +369,12 @@ export default function Landing() {
       </section>
 
       {/* ── TRIAL BANNER ── */}
+      {showTrialBanner && (
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#00D964]/15 via-[#00D964]/5 to-transparent pointer-events-none" />
         <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <p className="text-2xl md:text-3xl font-black text-white mb-1">{t.trialTitle}</p>
+            <p className="text-2xl md:text-3xl font-black text-white mb-1">{trialBannerTitle}</p>
             <p className="text-white/50 text-sm md:text-base">{t.trialSub}</p>
           </div>
           <Link
@@ -364,6 +385,7 @@ export default function Landing() {
           </Link>
         </div>
       </section>
+      )}
 
       {/* ── QUIÉNES SOMOS ── */}
       <section className="bg-[#111111] border-y border-white/8">
@@ -406,7 +428,7 @@ export default function Landing() {
               <div key={i} className="text-center">
                 <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{STAT_LIVE[i]}</div>
                 <div className="text-sm font-semibold text-white mb-0.5">{label}</div>
-                <div className="text-xs text-white/40">{sub}</div>
+                <div className="text-xs text-white/40">{i === 0 ? statsFechaInicio : sub}</div>
               </div>
             ))}
           </div>
@@ -414,6 +436,7 @@ export default function Landing() {
       </section>
 
       {/* ── WHY US ── */}
+      {showFeatures && (
       <section className="max-w-6xl mx-auto px-4 py-20">
         <div className="text-center mb-14">
           <h2 className="text-3xl md:text-4xl font-black mb-4">
@@ -440,6 +463,7 @@ export default function Landing() {
           })}
         </div>
       </section>
+      )}
 
       {/* ── SERVICIOS ── */}
       <section className="bg-[#111111] border-y border-white/8 py-20">
@@ -525,7 +549,7 @@ export default function Landing() {
 
           <div className="flex justify-center">
             <div className="w-full max-w-md">
-              <PlanCard plan={t.plans[0]} t={t} />
+              <PlanCard plan={resolvedPlan} t={t} />
             </div>
           </div>
         </div>

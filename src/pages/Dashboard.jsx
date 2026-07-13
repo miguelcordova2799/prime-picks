@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useAppSettings } from '../context/AppSettingsContext'
 import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download } from 'lucide-react'
 import { formatOdds } from '../lib/odds'
 
@@ -25,6 +26,9 @@ function fmtCDMX(iso) {
 
 export default function Dashboard() {
   const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
+  const { settings } = useAppSettings()
+  const trialLimit = parseInt(settings?.trial_picks || '2', 10)
+  const planPriceDyn = settings?.plan_precio ? `$${settings.plan_precio}` : '$399'
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
   const [stats, setStats] = useState({ wins: 0, losses: 0, pushes: 0, utility: 0, total: 0 })
@@ -195,18 +199,18 @@ export default function Dashboard() {
 
           {/* Trial status banner */}
           {!hasFullAccess && (
-            trialPickIds.length < 2 ? (
+            trialPickIds.length < trialLimit ? (
               <div className="mb-4 px-4 py-3 rounded-xl bg-[#00D964]/8 border border-[#00D964]/20">
                 <p className="text-sm text-[#00D964] font-medium">
                   🎁 Te {trialPickIds.length === 0 ? 'quedan' : 'queda'}{' '}
-                  <span className="font-bold">{2 - trialPickIds.length}</span>{' '}
-                  pick{2 - trialPickIds.length !== 1 ? 's' : ''} gratis de prueba — elige cuál desbloquear
+                  <span className="font-bold">{trialLimit - trialPickIds.length}</span>{' '}
+                  pick{trialLimit - trialPickIds.length !== 1 ? 's' : ''} gratis de prueba — elige cuál desbloquear
                 </p>
               </div>
             ) : (
               <div className="mb-4 px-4 py-3 rounded-xl bg-[#111111] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <p className="text-sm text-white/60">
-                  ✓ Ya usaste tus 2 picks gratis — suscríbete por <span className="text-white font-semibold">$399/mes</span> para ver todos
+                  ✓ Ya usaste tus {trialLimit} picks gratis — suscríbete por <span className="text-white font-semibold">{planPriceDyn}/mes</span> para ver todos
                 </p>
                 <Link to="/#pricing" className="shrink-0 text-xs font-bold text-[#00D964] hover:underline whitespace-nowrap">
                   Ver plan →
@@ -228,6 +232,7 @@ export default function Dashboard() {
                   pick={pick}
                   isSubscribed={hasFullAccess}
                   trialPickIds={trialPickIds}
+                  trialLimit={trialLimit}
                   onUnlock={unlockPick}
                 />
               ))}
@@ -253,10 +258,10 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
+function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock }) {
   const alreadyUnlocked = isSubscribed || pick.is_free || trialPickIds.includes(pick.id)
   const isPending = pick.result === 'pending'
-  const trialsLeft = 2 - trialPickIds.length
+  const trialsLeft = trialLimit - trialPickIds.length
   // Resolved picks are never unlockable via trial — value is in seeing picks before they play
   const canUnlock = !alreadyUnlocked && isPending && trialsLeft > 0
   const locked = !alreadyUnlocked
@@ -304,7 +309,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
             </>
           ) : isPending ? (
             <>
-              <p className="text-sm font-semibold text-white">Ya usaste tus 2 picks de prueba gratis</p>
+              <p className="text-sm font-semibold text-white">Ya usaste tus {trialLimit} picks de prueba gratis</p>
               <p className="text-xs text-white/40 mb-1">Suscríbete para ver todos los picks pendientes</p>
               <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors">
                 Ver planes

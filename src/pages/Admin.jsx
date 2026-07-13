@@ -1496,54 +1496,160 @@ function CourtesyAdmin() {
   )
 }
 
+function ToggleRow({ label, desc, on, onToggle }) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-4 bg-[#0A0A0A] border border-white/8 rounded-xl">
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        {desc && <p className="text-xs text-white/40 mt-0.5">{desc}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 ${on ? 'bg-[#00D964]' : 'bg-white/20'}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${on ? 'translate-x-6' : 'translate-x-0'}`} />
+      </button>
+    </div>
+  )
+}
+
 function ConfigAdmin() {
-  const { noticiasEnabled, setNoticiasEnabled } = useAppSettings()
+  const { settings, setNoticiasEnabled, refreshSettings } = useAppSettings()
+
+  const DEFAULTS = {
+    stats_fecha_inicio: '24 jun 2026',
+    hero_titulo: 'Apuesta con inteligencia',
+    hero_subtitulo: 'Picks deportivos con análisis real, edge detectado y récord transparente.',
+    plan_precio: '399',
+    plan_nombre: 'Prime Picks',
+    trial_picks: '2',
+    noticias_enabled: 'true',
+    banner_trial: 'true',
+    show_features: 'true',
+  }
+
+  const [form, setForm] = useState(DEFAULTS)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
-  async function toggle() {
+  useEffect(() => {
+    if (Object.keys(settings).length === 0) return
+    setForm(prev => {
+      const update = {}
+      Object.keys(prev).forEach(k => {
+        if (settings[k] !== undefined) update[k] = settings[k]
+      })
+      return { ...prev, ...update }
+    })
+  }, [settings])
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+  function toggleBool(k) { setForm(f => ({ ...f, [k]: f[k] === 'true' ? 'false' : 'true' })) }
+
+  async function handleSave() {
     setSaving(true)
     setMsg('')
-    const newVal = !noticiasEnabled
+    const rows = Object.entries(form).map(([key, value]) => ({ key, value }))
     const { error } = await supabase
       .from('app_settings')
-      .upsert({ key: 'noticias_enabled', value: String(newVal) }, { onConflict: 'key' })
+      .upsert(rows, { onConflict: 'key' })
     setSaving(false)
     if (error) {
       setMsg('Error: ' + error.message)
     } else {
-      setNoticiasEnabled(newVal)
-      setMsg(newVal ? 'Noticias activadas ✓' : 'Noticias desactivadas ✓')
-      setTimeout(() => setMsg(''), 3000)
+      setNoticiasEnabled(form.noticias_enabled === 'true')
+      await refreshSettings()
+      setMsg('✅ Página actualizada correctamente')
+      setTimeout(() => setMsg(''), 4000)
     }
   }
 
-  return (
-    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 max-w-lg">
-      <h2 className="text-lg font-bold mb-1">Configuración</h2>
-      <p className="text-white/40 text-sm mb-6">Activa o desactiva secciones de la app.</p>
+  const inp = 'w-full px-4 py-2.5 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#00D964]/50 transition-colors'
+  const lbl = 'block text-xs text-white/40 mb-1.5'
 
-      <div className="flex items-center justify-between gap-4 p-4 bg-[#0A0A0A] border border-white/8 rounded-xl">
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+        <h3 className="font-bold text-white">📊 Estadísticas</h3>
         <div>
-          <p className="text-sm font-semibold text-white">Sección de Noticias</p>
-          <p className="text-xs text-white/40 mt-0.5">
-            {noticiasEnabled
-              ? 'Activa — visible en el navbar y accesible vía /noticias'
-              : 'Desactivada — enlace oculto, /noticias redirige al inicio'}
-          </p>
+          <label className={lbl}>Fecha de inicio (aparece bajo el % de acierto)</label>
+          <input className={inp} value={form.stats_fecha_inicio} onChange={e => set('stats_fecha_inicio', e.target.value)} placeholder="24 jun 2026" />
         </div>
-        <button
-          onClick={toggle}
-          disabled={saving}
-          className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 disabled:opacity-50 ${noticiasEnabled ? 'bg-[#00D964]' : 'bg-white/20'}`}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${noticiasEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-        </button>
       </div>
 
-      {msg && (
-        <p className={`mt-3 text-sm ${msg.startsWith('Error') ? 'text-red-400' : 'text-[#00D964]'}`}>{msg}</p>
-      )}
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+        <h3 className="font-bold text-white">🎯 Hero (portada)</h3>
+        <div>
+          <label className={lbl}>Título principal</label>
+          <input className={inp} value={form.hero_titulo} onChange={e => set('hero_titulo', e.target.value)} placeholder="Apuesta con inteligencia" />
+          <p className="text-xs text-white/25 mt-1">La última palabra se muestra en verde.</p>
+        </div>
+        <div>
+          <label className={lbl}>Subtítulo</label>
+          <textarea className={inp + ' resize-none'} rows={3} value={form.hero_subtitulo} onChange={e => set('hero_subtitulo', e.target.value)} placeholder="Picks deportivos con análisis real..." />
+        </div>
+      </div>
+
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+        <h3 className="font-bold text-white">💰 Planes y precios</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={lbl}>Nombre del plan</label>
+            <input className={inp} value={form.plan_nombre} onChange={e => set('plan_nombre', e.target.value)} placeholder="Prime Picks" />
+          </div>
+          <div>
+            <label className={lbl}>Precio (MXN, sin $)</label>
+            <input className={inp} type="number" min="1" value={form.plan_precio} onChange={e => set('plan_precio', e.target.value)} placeholder="399" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
+        <h3 className="font-bold text-white">🎁 Free Trial</h3>
+        <div>
+          <label className={lbl}>Picks gratis por usuario nuevo</label>
+          <input className={inp} type="number" min="1" max="5" value={form.trial_picks} onChange={e => set('trial_picks', e.target.value)} placeholder="2" />
+          <p className="text-xs text-white/25 mt-1">Cuántos picks puede desbloquear un usuario sin suscripción (1–5).</p>
+        </div>
+      </div>
+
+      <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-3">
+        <h3 className="font-bold text-white mb-2">⚙️ Visibilidad de secciones</h3>
+        <ToggleRow
+          label="Sección de Noticias"
+          desc="Muestra el enlace Noticias en el navbar y habilita la ruta /noticias"
+          on={form.noticias_enabled === 'true'}
+          onToggle={() => toggleBool('noticias_enabled')}
+        />
+        <ToggleRow
+          label="Banner de prueba gratis"
+          desc={`Muestra el banner '🎁 Prueba ${form.trial_picks} picks GRATIS' en la landing`}
+          on={form.banner_trial === 'true'}
+          onToggle={() => toggleBool('banner_trial')}
+        />
+        <ToggleRow
+          label="Sección ¿Por qué Prime Picks?"
+          desc="Muestra los 3 cards de features en la landing"
+          on={form.show_features === 'true'}
+          onToggle={() => toggleBool('show_features')}
+        />
+      </div>
+
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-3 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+        >
+          {saving ? 'Guardando...' : '💾 Guardar cambios'}
+        </button>
+        {msg && (
+          <span className={`text-sm font-medium ${msg.startsWith('Error') ? 'text-red-400' : 'text-[#00D964]'}`}>{msg}</span>
+        )}
+      </div>
+
     </div>
   )
 }
