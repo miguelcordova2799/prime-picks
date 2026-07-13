@@ -159,7 +159,11 @@ function PicksAdmin() {
       is_free:       pick.is_free     || false,
       result:        pick.result      || 'pending',
       scheduled_at:  pick.published_at
-        ? new Date(pick.published_at).toISOString().slice(0, 16)
+        ? (() => {
+            // datetime-local needs local time, not UTC — adjust for timezone offset
+            const d = new Date(pick.published_at)
+            return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+          })()
         : '',
       is_parlay:     pick.is_parlay    || false,
       parlay_legs:   pick.parlay_legs  || [{ match: '', pick: '', odds: '' }, { match: '', pick: '', odds: '' }],
@@ -228,7 +232,10 @@ function PicksAdmin() {
       const { error } = await supabase.from('picks').update({
         ...payload,
         result:       form.result || 'pending',
-        published_at: form.scheduled_at || editingPick.published_at,
+        // Convert local datetime string → UTC ISO before saving
+        published_at: form.scheduled_at
+          ? new Date(form.scheduled_at).toISOString()
+          : editingPick.published_at,
       }).eq('id', editingPick.id)
       setSubmitting(false)
       if (error) showToast('Error: ' + error.message)
@@ -237,7 +244,7 @@ function PicksAdmin() {
       const { error } = await supabase.from('picks').insert({
         ...payload,
         result:       'pending',
-        published_at: form.scheduled_at || new Date().toISOString(),
+        published_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : new Date().toISOString(),
       })
       setSubmitting(false)
       if (error) showToast('Error: ' + error.message)
@@ -609,14 +616,15 @@ function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
       {open && (
         <div className="border-t border-white/8 p-4 space-y-3">
           {pick.analysis && <p className="text-xs text-white/50 leading-relaxed">{pick.analysis}</p>}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
-              { r: 'won', label: 'Ganado', Icon: CheckCircle, active: 'bg-[#00D964]/15 text-[#00D964] border-[#00D964]/30', hover: 'hover:border-[#00D964]/30 hover:text-[#00D964]' },
-              { r: 'pending', label: 'Pendiente', Icon: Clock, active: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', hover: 'hover:border-yellow-500/30 hover:text-yellow-400' },
-              { r: 'lost', label: 'Perdido', Icon: XCircle, active: 'bg-red-500/20 text-red-400 border-red-500/30', hover: 'hover:border-red-500/30 hover:text-red-400' },
+              { r: 'won',     label: 'Ganado',    Icon: CheckCircle, active: 'bg-[#00D964]/15 text-[#00D964] border-[#00D964]/30',   hover: 'hover:border-[#00D964]/30 hover:text-[#00D964]' },
+              { r: 'lost',    label: 'Perdido',   Icon: XCircle,     active: 'bg-red-500/20 text-red-400 border-red-500/30',         hover: 'hover:border-red-500/30 hover:text-red-400' },
+              { r: 'push',    label: 'Push ↩️',   Icon: RefreshCw,   active: 'bg-amber-500/20 text-amber-400 border-amber-500/30',   hover: 'hover:border-amber-500/30 hover:text-amber-400' },
+              { r: 'pending', label: 'Pendiente', Icon: Clock,       active: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', hover: 'hover:border-yellow-500/30 hover:text-yellow-400' },
             ].map(({ r, label, Icon, active, hover }) => (
               <button key={r} onClick={() => onResult(pick.id, r)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${
+                className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${
                   pick.result === r ? active : `border-white/10 text-white/40 ${hover}`
                 }`}>
                 <Icon size={13} /> {label}
