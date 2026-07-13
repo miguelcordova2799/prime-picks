@@ -25,7 +25,7 @@ const T = {
 
     // Stats bar
     stats: [
-      { label: 'Acierto', sub: 'Últimos 90 días' },
+      { label: 'Acierto', sub: 'Desde el 24 jun 2026' },
       { label: 'Utilidad', sub: 'Beneficio en % del bank' },
       { label: 'Picks', sub: 'Picks analizados' },
       { label: 'Racha actual', sub: 'Picks consecutivos' },
@@ -35,10 +35,9 @@ const T = {
     whyTitle: 'Por qué',
     whySub: 'No somos adivinos. Somos analistas. Cada pick tiene el razonamiento detrás.',
     features: [
-      'Análisis estadístico con edge % real',
-      'Picks verificados con historial público',
-      'Notificación inmediata al publicar',
-      'Estrellas de confianza 1–3 por pick',
+      { title: 'Análisis estadístico con edge % real', desc: 'Usamos modelos de probabilidad y value betting para identificar apuestas con ventaja real sobre las casas de apuestas.' },
+      { title: 'Picks verificados con historial público', desc: 'Todos nuestros resultados son transparentes y verificables. Sin trampa — solo datos reales publicados.' },
+      { title: 'Mayor probabilidad de utilidad', desc: 'Nuestro análisis estadístico y de value betting está diseñado para maximizar tu rentabilidad. No apostamos a la suerte — apostamos con ventaja matemática real sobre las casas de apuestas.' },
     ],
 
     // Services
@@ -130,7 +129,7 @@ const T = {
     aboutStat3: 'Picks analyzed',
 
     stats: [
-      { label: 'Hit Rate', sub: 'Last 90 days' },
+      { label: 'Hit Rate', sub: 'Since Jun 24, 2026' },
       { label: 'Utility', sub: 'Profit in % of bankroll' },
       { label: 'Picks', sub: 'Picks analyzed' },
       { label: 'Current streak', sub: 'Consecutive picks' },
@@ -139,10 +138,9 @@ const T = {
     whyTitle: 'Why',
     whySub: "We're not fortune tellers. We're analysts. Every pick has reasoning behind it.",
     features: [
-      'Statistical analysis with real edge %',
-      'Verified picks with public history',
-      'Immediate notification when published',
-      'Confidence stars 1–3 per pick',
+      { title: 'Statistical analysis with real edge %', desc: 'We use probability models and value betting to identify bets with a real edge over the bookmakers.' },
+      { title: 'Verified picks with public history', desc: 'All our results are transparent and verifiable. No tricks — just real published data.' },
+      { title: 'Higher Profit Probability', desc: "Our statistical and value betting analysis is designed to maximize your profitability. We don't bet on luck — we bet with real mathematical edge over the bookmakers." },
     ],
 
     servicesTitle: 'Our Services',
@@ -424,16 +422,19 @@ export default function Landing() {
           <p className="text-white/40 text-base max-w-lg mx-auto">{t.whySub}</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          {t.features.map((text, i) => {
-            const icons = [TrendingUp, Shield, Zap, Star]
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+          {t.features.map(({ title, desc }, i) => {
+            const icons = [BarChart2, CheckCircle, TrendingUp]
             const Icon = icons[i]
             return (
-              <div key={i} className="flex items-center gap-4 p-5 rounded-xl bg-[#111111] border border-white/8">
+              <div key={i} className="flex flex-col gap-4 p-6 rounded-xl bg-[#111111] border border-white/8 hover:border-[#00D964]/25 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-[#00D964]/12 flex items-center justify-center shrink-0">
                   <Icon size={20} className="text-[#00D964]" />
                 </div>
-                <span className="text-white/80 text-sm">{text}</span>
+                <div>
+                  <p className="font-bold text-white text-sm mb-1.5">{title}</p>
+                  <p className="text-white/50 text-sm leading-relaxed">{desc}</p>
+                </div>
               </div>
             )
           })}
