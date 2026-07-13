@@ -336,7 +336,16 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
   // Pick desbloqueado — mostrar contenido completo
   return (
     <>
-      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
+      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden" style={{position:'relative'}}>
+        {watermarkText && (
+          <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,pointerEvents:'none',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'space-around',alignItems:'center',zIndex:10}}>
+            {[0,1,2,3,4,5].map(i => (
+              <span key={i} style={{transform:'rotate(-25deg)',color:'rgba(255,255,255,0.055)',fontSize:'11px',fontWeight:'600',letterSpacing:'2px',whiteSpace:'nowrap',userSelect:'none',marginLeft:i%2===0?'-60px':'60px'}}>
+                {watermarkText}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="p-4 flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
@@ -408,18 +417,9 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
           </div>
         </div>
 
-        <div className="px-4 pb-4" style={{position:'relative'}}>
+        <div className="px-4 pb-4">
           <div className="text-xs text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
-          {watermarkText && (
-            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,pointerEvents:'none',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'space-around',alignItems:'center',zIndex:1}}>
-              {[0,1,2,3].map(i => (
-                <span key={i} style={{transform:'rotate(-25deg)',color:'rgba(255,255,255,0.06)',fontSize:'10px',fontWeight:'600',letterSpacing:'2px',whiteSpace:'nowrap',userSelect:'none'}}>
-                  {watermarkText}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {utility !== null && (
