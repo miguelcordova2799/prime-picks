@@ -7,10 +7,11 @@ import { formatOdds } from '../lib/odds'
 
 const RESULT_STYLES = {
   pending: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
-  won: 'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25',
-  lost: 'bg-red-500/15 text-red-400 border border-red-500/20',
+  won:     'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25',
+  lost:    'bg-red-500/15 text-red-400 border border-red-500/20',
+  push:    'bg-amber-500/15 text-amber-400 border border-amber-500/20',
 }
-const RESULT_LABELS = { pending: 'Pendiente', won: 'Ganado ✓', lost: 'Perdido ✗' }
+const RESULT_LABELS = { pending: 'Pendiente', won: 'Ganado ✓', lost: 'Perdido ✗', push: 'Push ↩️' }
 
 // Format a UTC ISO string to CDMX local time: "24 jun · 7:00 PM"
 function fmtCDMX(iso) {
@@ -26,7 +27,7 @@ export default function Dashboard() {
   const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
   const [picks, setPicks] = useState([])
   const [history, setHistory] = useState([])
-  const [stats, setStats] = useState({ wins: 0, losses: 0, utility: 0, total: 0 })
+  const [stats, setStats] = useState({ wins: 0, losses: 0, pushes: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
   // null = still determining (blocks render until Supabase confirms), [] = full access
@@ -107,20 +108,22 @@ export default function Dashboard() {
     if (!data) return
     const wins    = data.filter(p => p.result === 'won').length
     const losses  = data.filter(p => p.result === 'lost').length
+    const pushes  = data.filter(p => p.result === 'push').length
+    // Push picks return stake (utility = 0) and don't count for hit rate
     const utility = data.reduce((sum, p) => {
       const stake = parseFloat(p.stake_percent) || 2
       if (p.result === 'won')  return sum + stake * (parseFloat(p.odds) - 1)
       if (p.result === 'lost') return sum - stake
-      return sum
+      return sum // push: +0
     }, 0)
-    setStats({ wins, losses, utility: Math.round(utility * 100) / 100, total: data.length })
+    setStats({ wins, losses, pushes, utility: Math.round(utility * 100) / 100, total: wins + losses })
   }
 
   async function fetchHistory() {
     const { data } = await supabase
       .from('picks')
-      .select('id, match_name, pick_text, odds, result, published_at, stake_percent, is_parlay, parlay_legs')
-      .in('result', ['won', 'lost'])
+      .select('id, match_name, pick_text, odds, result, published_at, stake_percent, is_parlay, parlay_legs, is_combined, combined_bets')
+      .in('result', ['won', 'lost', 'push'])
       .order('published_at', { ascending: false })
     setHistory(data || [])
   }
@@ -166,16 +169,17 @@ export default function Dashboard() {
         )}
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <StatCard icon={Trophy} label="Ganados" value={stats.wins} color="text-[#00D964]" />
           <StatCard icon={Target} label="Perdidos" value={stats.losses} color="text-red-400" />
+          <StatCard icon={TrendingUp} label="Push ↩️" value={stats.pushes} color="text-amber-400" />
           <StatCard
             icon={TrendingUp}
             label="Utilidad"
             value={`${stats.utility >= 0 ? '+' : ''}${Number(stats.utility).toFixed(2)}%`}
             color={stats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
           />
-          <StatCard icon={TrendingUp} label="Total picks" value={stats.total} color="text-white/70" />
+          <StatCard icon={TrendingUp} label="Total picks" value={stats.wins + stats.losses} color="text-white/70" />
         </div>
 
         {/* Picks list */}
@@ -263,6 +267,8 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
     ? stake * (parseFloat(pick.odds) - 1)
     : pick.result === 'lost'
     ? -stake
+    : pick.result === 'push'
+    ? 0
     : null
 
   if (locked) {
@@ -400,9 +406,15 @@ function PickCard({ pick, isSubscribed, trialPickIds, onUnlock }) {
         {utility !== null && (
           <div className="px-4 pb-3">
             <div className="text-xs text-white/35 mb-1">Utilidad</div>
-            <div className={`text-sm font-bold ${utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
-              {utility >= 0 ? '+' : ''}{utility.toFixed(2)}% del bank
-            </div>
+            {pick.result === 'push' ? (
+              <div className="text-sm font-bold text-amber-400">
+                +0.00% del bank <span className="text-xs font-normal text-white/35">(stake devuelto)</span>
+              </div>
+            ) : (
+              <div className={`text-sm font-bold ${utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}`}>
+                {utility >= 0 ? '+' : ''}{utility.toFixed(2)}% del bank
+              </div>
+            )}
           </div>
         )}
 
@@ -638,18 +650,22 @@ function ShareModal({ pick, onClose }) {
 function HistoryTable({ history, isSubscribed }) {
   if (history.length === 0) return null
 
-  const wins = history.filter(p => p.result === 'won').length
+  const wins   = history.filter(p => p.result === 'won').length
   const losses = history.filter(p => p.result === 'lost').length
+  const pushes = history.filter(p => p.result === 'push').length
   const rows = history
 
   return (
     <div className="mt-10">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <h2 className="text-lg font-bold">Historial de picks</h2>
         <span className="text-sm font-mono bg-[#111111] border border-white/8 px-3 py-1 rounded-lg">
           <span className="text-[#00D964] font-bold">{wins}</span>
           <span className="text-white/30">-</span>
           <span className="text-red-400 font-bold">{losses}</span>
+          {pushes > 0 && (
+            <><span className="text-white/30"> · </span><span className="text-amber-400 font-bold">{pushes}↩</span></>
+          )}
         </span>
       </div>
 
@@ -681,7 +697,8 @@ function HistoryTable({ history, isSubscribed }) {
                   const s = parseFloat(pick.stake_percent) || 2
                   const util = pick.result === 'won'
                     ? s * (parseFloat(pick.odds) - 1)
-                    : -s
+                    : pick.result === 'push' ? 0 : -s
+                  const isPush = pick.result === 'push'
                   const utilPos = util >= 0
                   return (
                     <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
@@ -714,17 +731,16 @@ function HistoryTable({ history, isSubscribed }) {
                         {s}%
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`text-sm font-semibold ${utilPos ? 'text-[#00D964]' : 'text-red-400'}`}>
+                        <span className={`text-sm font-semibold ${
+                          isPush ? 'text-amber-400' : utilPos ? 'text-[#00D964]' : 'text-red-400'
+                        }`}>
                           {utilPos ? '+' : ''}{util.toFixed(2)}%
+                          {isPush && <span className="text-xs font-normal text-white/35 ml-1">(↩️)</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          pick.result === 'won'
-                            ? 'bg-[#00D964]/12 text-[#00D964] border border-[#00D964]/25'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                        }`}>
-                          {pick.result === 'won' ? 'Ganado ✓' : 'Perdido ✗'}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${RESULT_STYLES[pick.result] || RESULT_STYLES.pending}`}>
+                          {RESULT_LABELS[pick.result] || pick.result}
                         </span>
                       </td>
                     </tr>

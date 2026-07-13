@@ -536,7 +536,7 @@ function PicksAdmin() {
                   <option value="pending">Pendiente</option>
                   <option value="won">Ganado</option>
                   <option value="lost">Perdido</option>
-                  <option value="push">Anulado</option>
+                  <option value="push">Push ↩️</option>
                 </select>
               </Field>
             )}
@@ -589,7 +589,7 @@ function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
     lost: 'bg-red-500/15 text-red-400',
     push: 'bg-white/10 text-white/40',
   }
-  const resultLabels = { pending: 'Pendiente', won: 'Ganado', lost: 'Perdido', push: 'Anulado' }
+  const resultLabels = { pending: 'Pendiente', won: 'Ganado', lost: 'Perdido', push: 'Push ↩️' }
 
   return (
     <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
@@ -1132,7 +1132,7 @@ function ControlAdmin() {
   const total     = rows.length
   const won       = rows.filter(r => r.result === 'won').length
   const lost      = rows.filter(r => r.result === 'lost').length
-  const push      = rows.filter(r => r.result !== 'won' && r.result !== 'lost').length
+  const push      = rows.filter(r => r.result === 'push').length
   const resolved  = won + lost
   const hitRate   = resolved > 0 ? Math.round((won / resolved) * 100) : 0
   const totalUtil = rows.reduce((s, r) => s + r.utility, 0)
@@ -1144,7 +1144,7 @@ function ControlAdmin() {
     lost: { label: 'Perdida', cls: 'bg-red-500/15 text-red-400 border-red-500/25' },
   }
   function getBadge(result) {
-    return resultBadge[result] || { label: 'Anulada', cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' }
+    return resultBadge[result] || { label: 'Push ↩️', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/25' }
   }
 
   return (
@@ -1155,7 +1155,7 @@ function ControlAdmin() {
           { label: 'Total picks', value: total },
           { label: 'Ganados', value: won, color: 'text-[#00D964]' },
           { label: 'Perdidos', value: lost, color: 'text-red-400' },
-          { label: 'Anulados', value: push, color: 'text-yellow-400' },
+          { label: 'Push ↩️', value: push, color: 'text-amber-400' },
           { label: '% Acierto', value: `${hitRate}%` },
           {
             label: 'Utilidad acumulada',
@@ -1200,7 +1200,7 @@ function ControlAdmin() {
             <tbody>
               {rows.map((r, i) => {
                 const badge = getBadge(r.result)
-                const utilColor = r.result === 'won' ? 'text-[#00D964]' : r.result === 'lost' ? 'text-red-400' : 'text-white/30'
+                const utilColor = r.result === 'won' ? 'text-[#00D964]' : r.result === 'lost' ? 'text-red-400' : 'text-amber-400'
                 const accColor  = r.accumulated >= 0 ? 'text-[#00D964]' : 'text-red-400'
                 return (
                   <tr key={r.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
