@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
+import { useAppSettings } from '../context/AppSettingsContext'
 import { LogoFull } from './Logo'
 import { LogOut, LayoutDashboard, Shield, Newspaper, Home, ChevronDown, Mail } from 'lucide-react'
 
@@ -13,6 +14,7 @@ const NAV_T = {
 export default function Navbar() {
   const { user, profile, isAdmin, isSubscribed, isCourtesy, hasFullAccess, signOut } = useAuth()
   const { lang, setLang } = useLang()
+  const { noticiasEnabled } = useAppSettings()
   const navigate = useNavigate()
   const location = useLocation()
   const t = NAV_T[lang]
@@ -66,7 +68,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-4">
           {navLink('/', t.home, Home, true)}
-          {navLink('/noticias', t.news, Newspaper)}
+          {noticiasEnabled && navLink('/noticias', t.news, Newspaper)}
           {navLink('/contacto', t.contact, Mail)}
 
           {user ? (

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, Clock, ChevronDown, Newspaper, Trash2, Upload, X, BarChart2, RefreshCw, TrendingUp, Download, Edit, MessageSquare, Users, Settings } from 'lucide-react'
 import { formatOdds, americanToDecimal } from '../lib/odds'
+import { useAppSettings } from '../context/AppSettingsContext'
 
 const EMPTY_COMBINED_BET = { market: '', selection: '', odds: '' }
 const EMPTY_PICK = {
@@ -69,6 +70,7 @@ export default function Admin() {
             badge={unreadCount}
           />
           <TabBtn active={tab === 'cortesia'} onClick={() => setTab('cortesia')} icon={Users} label="Cortesía" />
+          <TabBtn active={tab === 'config'} onClick={() => setTab('config')} icon={Settings} label="Config" />
         </div>
 
         {tab === 'picks' && <PicksAdmin />}
@@ -77,6 +79,7 @@ export default function Admin() {
         {tab === 'control' && <ControlAdmin />}
         {tab === 'mensajes' && <MensajesAdmin />}
         {tab === 'cortesia' && <CourtesyAdmin />}
+        {tab === 'config' && <ConfigAdmin />}
       </div>
 
       <style>{`
@@ -1489,6 +1492,58 @@ function CourtesyAdmin() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ConfigAdmin() {
+  const { noticiasEnabled, setNoticiasEnabled } = useAppSettings()
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function toggle() {
+    setSaving(true)
+    setMsg('')
+    const newVal = !noticiasEnabled
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key: 'noticias_enabled', value: String(newVal) }, { onConflict: 'key' })
+    setSaving(false)
+    if (error) {
+      setMsg('Error: ' + error.message)
+    } else {
+      setNoticiasEnabled(newVal)
+      setMsg(newVal ? 'Noticias activadas ✓' : 'Noticias desactivadas ✓')
+      setTimeout(() => setMsg(''), 3000)
+    }
+  }
+
+  return (
+    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 max-w-lg">
+      <h2 className="text-lg font-bold mb-1">Configuración</h2>
+      <p className="text-white/40 text-sm mb-6">Activa o desactiva secciones de la app.</p>
+
+      <div className="flex items-center justify-between gap-4 p-4 bg-[#0A0A0A] border border-white/8 rounded-xl">
+        <div>
+          <p className="text-sm font-semibold text-white">Sección de Noticias</p>
+          <p className="text-xs text-white/40 mt-0.5">
+            {noticiasEnabled
+              ? 'Activa — visible en el navbar y accesible vía /noticias'
+              : 'Desactivada — enlace oculto, /noticias redirige al inicio'}
+          </p>
+        </div>
+        <button
+          onClick={toggle}
+          disabled={saving}
+          className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 disabled:opacity-50 ${noticiasEnabled ? 'bg-[#00D964]' : 'bg-white/20'}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${noticiasEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+        </button>
+      </div>
+
+      {msg && (
+        <p className={`mt-3 text-sm ${msg.startsWith('Error') ? 'text-red-400' : 'text-[#00D964]'}`}>{msg}</p>
+      )}
     </div>
   )
 }

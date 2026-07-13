@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { AppSettingsProvider, useAppSettings } from './context/AppSettingsContext'
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
@@ -21,35 +22,50 @@ function Layout({ children }) {
   )
 }
 
+function AppRoutes() {
+  const { noticiasEnabled } = useAppSettings()
+  return (
+    <Routes>
+      <Route path="/" element={<Layout><Landing /></Layout>} />
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/noticias"
+        element={noticiasEnabled ? <Layout><Noticias /></Layout> : <Navigate to="/" replace />}
+      />
+      <Route
+        path="/noticias/:id"
+        element={noticiasEnabled ? <Layout><NoticiaDetalle /></Layout> : <Navigate to="/" replace />}
+      />
+      <Route path="/contacto" element={<Layout><Contacto /></Layout>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Layout><Dashboard /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <Layout><Admin /></Layout>
+          </AdminRoute>
+        }
+      />
+    </Routes>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <LanguageProvider>
-          <Routes>
-            <Route path="/" element={<Layout><Landing /></Layout>} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/noticias" element={<Layout><Noticias /></Layout>} />
-            <Route path="/noticias/:id" element={<Layout><NoticiaDetalle /></Layout>} />
-            <Route path="/contacto" element={<Layout><Contacto /></Layout>} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout><Dashboard /></Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <Layout><Admin /></Layout>
-                </AdminRoute>
-              }
-            />
-          </Routes>
+          <AppSettingsProvider>
+            <AppRoutes />
+          </AppSettingsProvider>
         </LanguageProvider>
       </AuthProvider>
     </BrowserRouter>
