@@ -111,7 +111,7 @@ const T = {
     rgText: 'Las apuestas son entretenimiento, no una fuente de ingresos garantizada. Nunca apuestes más de lo que puedes perder. Si sientes que el juego está afectando tu vida, busca ayuda.',
 
     // Footer
-    footerLinks: ['Noticias', 'Picks', 'Academia', 'Contacto'],
+    footerLinks: ['Noticias', 'Picks', 'Contacto'],
     footerCopy: '© 2026 Prime Picks. Todos los derechos reservados.',
   },
 
@@ -207,7 +207,7 @@ const T = {
     rgTitle: 'Gamble Responsibly',
     rgText: "Betting is entertainment, not a guaranteed income source. Never bet more than you can afford to lose. If you feel gambling is affecting your life, please seek help.",
 
-    footerLinks: ['News', 'Picks', 'Academy', 'Contact'],
+    footerLinks: ['News', 'Picks', 'Contact'],
     footerCopy: '© 2026 Prime Picks. All rights reserved.',
   },
 }
@@ -595,7 +595,7 @@ export default function Landing() {
 
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
               {t.footerLinks.map((link, i) => {
-                const hrefs = ['/noticias', '/dashboard', '/dashboard', '/login']
+                const hrefs = ['/noticias', '/dashboard', '/contacto']
                 return (
                   <Link key={i} to={hrefs[i]} className="text-sm text-white/40 hover:text-white transition-colors">
                     {link}
