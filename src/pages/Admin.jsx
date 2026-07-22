@@ -1677,7 +1677,7 @@ function ServiciosSection() {
 function PlanSection() {
   const { settings, refreshSettings } = useAppSettings()
   const DEFAULT_FEATS = ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Noticias del Mundial', 'Cancela cuando quieras', '']
-  const [form, setForm] = useState({ plan_nombre: 'Prime Picks', plan_precio: '399', plan_desc: 'Acceso completo a todos los picks, análisis e historial.', trial_picks: '2' })
+  const [form, setForm] = useState({ plan_nombre: 'Prime Picks', plan_precio: '899', plan_desc: 'Acceso completo a todos los picks, análisis e historial.', trial_picks: '2' })
   const [features, setFeatures] = useState(DEFAULT_FEATS)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -1711,7 +1711,7 @@ function PlanSection() {
         </div>
         <div>
           <label className={CFG_LBL}>Precio mensual (MXN, sin $)</label>
-          <input className={CFG_INP} type="number" min="1" value={form.plan_precio} onChange={sf('plan_precio')} placeholder="399" />
+          <input className={CFG_INP} type="number" min="1" value={form.plan_precio} onChange={sf('plan_precio')} placeholder="899" />
         </div>
       </div>
       <div>

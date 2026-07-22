@@ -8,6 +8,9 @@
   --color-bg-secondary: #111111;
   --color-bg-card: #161616;
   --color-bg-elevated: #1C1C1C;
+
+  --font-display: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono-label: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 * {
@@ -24,4 +27,29 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+.glass-card {
+  background-color: rgba(17, 17, 17, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+}
+
+.premium-glow {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37), 0 0 25px rgba(0, 217, 100, 0.15);
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.page-ambient-bg {
+  background-image:
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(0, 217, 100, 0.10), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 48px);
 }

@@ -74,14 +74,15 @@ const T = {
     perMonth: '/mes',
     oneTime: 'pago único',
     planCTA: 'Empezar ahora',
+    planBankNote: 'Bank recomendado: $10,000 MXN',
     plans: [
       {
         planId: 'prime',
         name: 'Prime Picks',
-        price: '$399',
+        price: '$899',
         period: 'mes',
         one_time: false,
-        desc: 'Acceso completo a todos los picks, análisis e historial.',
+        desc: 'Acceso completo a todos los picks, análisis e historial. Recomendamos iniciar con un bankroll de $10,000 MXN para maximizar el sistema de stakes.',
         features: ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Noticias del Mundial', 'Cancela cuando quieras'],
         highlight: true,
         gold: false,
@@ -174,14 +175,15 @@ const T = {
     perMonth: '/mo',
     oneTime: 'one-time',
     planCTA: 'Get started',
+    planBankNote: 'Recommended bankroll: $10,000 MXN',
     plans: [
       {
         planId: 'prime',
         name: 'Prime Picks',
-        price: '$399',
+        price: '$899',
         period: 'mo',
         one_time: false,
-        desc: 'Full access to all picks, analysis, and history.',
+        desc: 'Full access to all picks, analysis, and history. We recommend starting with a $10,000 MXN bankroll to get the most out of the staking system.',
         features: ['All picks with full analysis', 'Complete results history', 'Real-time statistics', 'World Cup news', 'Cancel anytime'],
         highlight: true,
         gold: false,
@@ -260,6 +262,29 @@ function usePickStats() {
   return stats
 }
 
+/* ── HIT RATE RING ────────────────────────────────────────── */
+function HitRateRing({ hitRate, fmtHit }) {
+  const RADIUS = 46
+  const CIRC = 2 * Math.PI * RADIUS
+  const pct = hitRate !== null ? Math.min(Math.max(hitRate, 0), 100) : 0
+  return (
+    <svg width="112" height="112" viewBox="0 0 112 112" className="shrink-0">
+      <circle cx="56" cy="56" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9" />
+      <circle
+        cx="56" cy="56" r={RADIUS} fill="none" stroke="#00D964" strokeWidth="9" strokeLinecap="round"
+        strokeDasharray={CIRC} strokeDashoffset={CIRC - (pct / 100) * CIRC}
+        style={{
+          transform: 'rotate(-90deg)',
+          transformOrigin: '50% 50%',
+          filter: 'drop-shadow(0 0 6px rgba(0,217,100,0.6))',
+          transition: 'stroke-dashoffset 0.8s ease',
+        }}
+      />
+      <text x="56" y="62" textAnchor="middle" className="fill-white font-black" style={{ fontSize: '20px' }}>{fmtHit}</text>
+    </svg>
+  )
+}
+
 /* ── COMPONENT ────────────────────────────────────────────── */
 export default function Landing() {
   const [lang, setLang] = useState(() => {
@@ -331,13 +356,11 @@ export default function Landing() {
     : `🎁 Try ${trialLimit} FREE picks before subscribing`
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <div className="min-h-screen bg-[#0A0A0A] text-white font-display relative isolate">
+      <div aria-hidden className="absolute inset-0 -z-10 page-ambient-bg" />
 
       {/* ── HERO ── */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#00D964]/6 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-20 right-1/4 w-96 h-96 bg-[#00D964]/4 rounded-full blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto px-4 pt-16 pb-16 text-center">
           <div className="flex justify-center mb-8">
             <img
@@ -348,7 +371,7 @@ export default function Landing() {
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#00D964]/30 bg-[#00D964]/10 text-[#00D964] text-xs font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#00D964]/30 bg-[#00D964]/10 backdrop-blur-sm text-[#00D964] text-xs font-medium mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00D964] animate-pulse" />
             {t.heroBadge}
           </div>
@@ -365,11 +388,11 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handlePicksClick}
-              className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base"
+              className="px-8 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 active:scale-95 text-base"
             >
               {settings?.hero_cta || t.heroCTA}
             </button>
-            <a href="#pricing" className="px-8 py-4 border border-white/20 text-white rounded-xl hover:border-white/40 transition-colors text-base">
+            <a href="#pricing" className="px-8 py-4 border border-white/20 text-white rounded-xl hover:border-white/40 active:scale-95 transition-all text-base">
               {t.heroPlans}
             </a>
           </div>
@@ -379,18 +402,19 @@ export default function Landing() {
       {/* ── TRIAL BANNER ── */}
       {showTrialBanner && (
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#00D964]/15 via-[#00D964]/5 to-transparent pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <p className="text-2xl md:text-3xl font-black text-white mb-1">{trialBannerTitle}</p>
-            <p className="text-white/50 text-sm md:text-base">{t.trialSub}</p>
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="glass-card premium-glow border border-white/10 rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div>
+              <p className="text-2xl md:text-3xl font-black text-white mb-1">{trialBannerTitle}</p>
+              <p className="text-white/50 text-sm md:text-base">{t.trialSub}</p>
+            </div>
+            <Link
+              to="/login"
+              className="shrink-0 px-7 py-3.5 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 active:scale-95 text-sm whitespace-nowrap"
+            >
+              {t.trialCTA}
+            </Link>
           </div>
-          <Link
-            to="/login"
-            className="shrink-0 px-7 py-3.5 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-sm whitespace-nowrap"
-          >
-            {t.trialCTA}
-          </Link>
         </div>
       </section>
       )}
@@ -401,18 +425,18 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 py-20">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left: visual stats card */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 space-y-0">
-              <div className="pb-6">
-                <div className="text-5xl font-black text-[#00D964]">{fmtHit}</div>
-                <div className="text-sm text-white/40 mt-1">{t.aboutStat1}</div>
+            <div className="glass-card premium-glow border border-white/10 rounded-2xl p-8 space-y-0">
+              <div className="pb-6 flex items-center gap-6">
+                <HitRateRing hitRate={hitRate} fmtHit={fmtHit} />
+                <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40">{t.aboutStat1}</div>
               </div>
               <div className="border-t border-white/8 py-6">
                 <div className="text-5xl font-black text-[#00D964]">{fmtUtility}</div>
-                <div className="text-sm text-white/40 mt-1">{t.aboutStat2}</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mt-1">{t.aboutStat2}</div>
               </div>
               <div className="border-t border-white/8 pt-6">
                 <div className="text-5xl font-black text-white">{fmtTotal}</div>
-                <div className="text-sm text-white/40 mt-1">{t.aboutStat3}</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mt-1">{t.aboutStat3}</div>
               </div>
             </div>
 
@@ -433,11 +457,11 @@ export default function Landing() {
       {/* ── STATS BAR ── */}
       <section className="border-b border-white/8">
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {t.stats.map(({ label, sub }, i) => (
-              <div key={i} className="text-center">
+              <div key={i} className="glass-card border border-white/8 rounded-2xl p-5 text-center">
+                <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-2">{label}</div>
                 <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{STAT_LIVE[i]}</div>
-                <div className="text-sm font-semibold text-white mb-0.5">{label}</div>
                 <div className="text-xs text-white/40">{i === 0 ? statsFechaInicio : sub}</div>
               </div>
             ))}
@@ -460,7 +484,7 @@ export default function Landing() {
             const icons = [BarChart2, CheckCircle, TrendingUp]
             const Icon = icons[i]
             return (
-              <div key={i} className="flex flex-col gap-4 p-6 rounded-xl bg-[#111111] border border-white/8 hover:border-[#00D964]/25 transition-colors">
+              <div key={i} className="flex flex-col gap-4 p-6 rounded-2xl glass-card border border-white/8 hover:border-[#00D964]/25 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-[#00D964]/12 flex items-center justify-center shrink-0">
                   <Icon size={20} className="text-[#00D964]" />
                 </div>
@@ -487,7 +511,7 @@ export default function Landing() {
             {resolvedServices.map(({ title, desc }, i) => {
               const Icon = SERVICE_ICONS[i]
               return (
-                <div key={i} className="h-full bg-[#161616] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#00D964]/25 transition-colors">
+                <div key={i} className="h-full glass-card border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#00D964]/25 transition-colors">
                   <div className="w-12 h-12 rounded-xl bg-[#00D964]/12 flex items-center justify-center shrink-0">
                     <Icon size={24} className="text-[#00D964]" />
                   </div>
@@ -515,22 +539,22 @@ export default function Landing() {
           </span>
         </div>
 
-        <div className="max-w-lg mx-auto rounded-2xl bg-[#111111] border border-white/10 overflow-hidden">
+        <div className="max-w-lg mx-auto rounded-2xl glass-card border border-white/10 overflow-hidden">
           <div className="p-5 border-b border-white/8">
             <div className="text-xs text-white/40 mb-1">{t.pickDate}</div>
             <div className="font-bold text-white">{t.pickMatch}</div>
           </div>
           <div className="p-5 grid grid-cols-3 gap-4 border-b border-white/8 text-center">
             <div>
-              <div className="text-xs text-white/40 mb-1">{t.pickLabel}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-1">{t.pickLabel}</div>
               <div className="text-sm font-bold text-white">{t.pickValue}</div>
             </div>
             <div>
-              <div className="text-xs text-white/40 mb-1">{t.oddsLabel}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-1">{t.oddsLabel}</div>
               <div className="text-sm font-bold text-white/80">{formatOdds(1.85)}</div>
             </div>
             <div>
-              <div className="text-xs text-white/40 mb-1">{t.edgeLabel}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-1">{t.edgeLabel}</div>
               <div className="text-sm font-bold text-[#00D964]">2% del bank</div>
             </div>
           </div>
@@ -570,7 +594,7 @@ export default function Landing() {
         <div className="max-w-xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-black mb-4">{t.ctaTitle}</h2>
           <p className="text-white/40 mb-8">{t.ctaSub}</p>
-          <Link to="/login" className="inline-block px-10 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 text-base">
+          <Link to="/login" className="inline-block px-10 py-4 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] transition-all hover:scale-105 active:scale-95 text-base">
             {t.ctaBtn}
           </Link>
         </div>
@@ -669,7 +693,7 @@ function PlanCard({ plan, t }) {
       : 'border border-[#00D964]/40 text-[#00D964] hover:bg-[#00D964]/8'
 
   return (
-    <div className={`relative rounded-2xl ${bgClass} border ${borderClass} p-6 flex flex-col`}>
+    <div className={`relative rounded-2xl glass-card ${highlight ? 'premium-glow' : ''} ${bgClass} border ${borderClass} p-6 flex flex-col`}>
       {highlight && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#00D964] text-black text-xs font-bold rounded-full whitespace-nowrap">
           {t.popular}
@@ -690,6 +714,7 @@ function PlanCard({ plan, t }) {
           {one_time && <span className="text-base font-normal text-white/40"> MXN</span>}
         </div>
         {one_time && <div className="text-xs text-white/30 mt-0.5">{t.oneTime}</div>}
+        <div className="text-xs text-[#00D964]/70 font-medium mt-1.5">{t.planBankNote}</div>
       </div>
 
       <p className="text-xs text-white/50 leading-relaxed mb-5">{desc}</p>
@@ -706,7 +731,7 @@ function PlanCard({ plan, t }) {
       <button
         onClick={handleCheckout}
         disabled={loading}
-        className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-colors ${ctaClass} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-all active:scale-95 ${ctaClass} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         {loading ? '...' : t.planCTA}
       </button>

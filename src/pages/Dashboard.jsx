@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useAppSettings } from '../context/AppSettingsContext'
-import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download } from 'lucide-react'
+import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download, LayoutDashboard, Receipt } from 'lucide-react'
 import { formatOdds } from '../lib/odds'
 
 const RESULT_STYLES = {
@@ -24,25 +24,73 @@ function fmtCDMX(iso) {
   return `${day} · ${time}`
 }
 
+// "YYYY-MM" key for a pick's published_at, in CDMX local time
+function monthKeyOf(iso) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit' })
+}
+
+// "YYYY-MM" -> "Jul 2026"
+function monthLabelOf(key) {
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1, 1))
+  const label = d.toLocaleDateString('es-MX', { timeZone: 'UTC', month: 'short', year: 'numeric' }).replace('.', '')
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 export default function Dashboard() {
   const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
   const { settings } = useAppSettings()
   const trialLimit = parseInt(settings?.trial_picks || '2', 10)
-  const planPriceDyn = settings?.plan_precio ? `$${settings.plan_precio}` : '$399'
+  const planPriceDyn = settings?.plan_precio ? `$${settings.plan_precio}` : '$899'
   const [picks, setPicks] = useState([])
-  const [history, setHistory] = useState([])
-  const [stats, setStats] = useState({ wins: 0, losses: 0, pushes: 0, utility: 0, total: 0 })
   const [loading, setLoading] = useState(true)
 
   // null = still determining (blocks render until Supabase confirms), [] = full access
   const [trialPickIds, setTrialPickIds] = useState(null)
   const [trialSaveError, setTrialSaveError] = useState('')
 
+  // null = "no explicit selection yet" -> defaults to the most recent month once picks load
+  const [selectedMonth, setSelectedMonth] = useState(null)
+
   useEffect(() => {
     fetchPicks()
-    fetchStats()
-    fetchHistory()
   }, [])
+
+  const availableMonths = useMemo(() => {
+    const map = new Map()
+    picks.forEach(p => {
+      const key = monthKeyOf(p.published_at)
+      if (!map.has(key)) map.set(key, monthLabelOf(key))
+    })
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, label]) => ({ key, label }))
+  }, [picks])
+
+  const effectiveMonth = selectedMonth ?? (availableMonths[0]?.key ?? 'all')
+
+  const filteredPicks = useMemo(() => (
+    effectiveMonth === 'all' ? picks : picks.filter(p => monthKeyOf(p.published_at) === effectiveMonth)
+  ), [picks, effectiveMonth])
+
+  const filteredStats = useMemo(() => {
+    const resolved = filteredPicks.filter(p => ['won', 'lost', 'push'].includes(p.result))
+    const wins = resolved.filter(p => p.result === 'won').length
+    const losses = resolved.filter(p => p.result === 'lost').length
+    const pushes = resolved.filter(p => p.result === 'push').length
+    const utility = resolved.reduce((sum, p) => {
+      const stake = parseFloat(p.stake_percent) || 2
+      if (p.result === 'won') return sum + stake * (parseFloat(p.odds) - 1)
+      if (p.result === 'lost') return sum - stake
+      return sum // push: +0
+    }, 0)
+    return { wins, losses, pushes, utility: Math.round(utility * 100) / 100, total: wins + losses + pushes }
+  }, [filteredPicks])
+
+  const filteredHistory = useMemo(() => (
+    filteredPicks.filter(p => ['won', 'lost', 'push'].includes(p.result))
+  ), [filteredPicks])
 
   // Read trial_pick_ids DIRECTLY from Supabase every mount — never rely on cached profile.
   // This guarantees reload always shows the correct unlocked picks.
@@ -99,37 +147,8 @@ export default function Dashboard() {
       .from('picks')
       .select('*')
       .order('published_at', { ascending: false })
-      .limit(20)
     setPicks(data || [])
     setLoading(false)
-  }
-
-  async function fetchStats() {
-    const { data, error } = await supabase
-      .from('picks')
-      .select('result, odds, stake_percent')
-      .in('result', ['won', 'lost', 'push'])
-    if (error || !data) { console.error('fetchStats error:', error); return }
-    const wins    = data.filter(p => p.result === 'won').length
-    const losses  = data.filter(p => p.result === 'lost').length
-    const pushes  = data.filter(p => p.result === 'push').length
-    // Push picks return stake (utility = 0) and don't count for hit rate
-    const utility = data.reduce((sum, p) => {
-      const stake = parseFloat(p.stake_percent) || 2
-      if (p.result === 'won')  return sum + stake * (parseFloat(p.odds) - 1)
-      if (p.result === 'lost') return sum - stake
-      return sum // push: +0
-    }, 0)
-    setStats({ wins, losses, pushes, utility: Math.round(utility * 100) / 100, total: wins + losses + pushes })
-  }
-
-  async function fetchHistory() {
-    const { data } = await supabase
-      .from('picks')
-      .select('id, match_name, pick_text, odds, result, published_at, stake_percent, is_parlay, parlay_legs, is_combined, combined_bets')
-      .in('result', ['won', 'lost', 'push'])
-      .order('published_at', { ascending: false })
-    setHistory(data || [])
   }
 
   // Block render until picks, auth, and trial assignment are all confirmed.
@@ -141,14 +160,16 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <div className="min-h-screen bg-[#0A0A0A] text-white font-display relative isolate">
+      <div aria-hidden className="absolute inset-0 -z-10 page-ambient-bg" />
       <div className="max-w-4xl mx-auto px-4 py-8">
 
         <div className="mb-8">
-          <h1 className="text-2xl font-black mb-1">
+          <h1 className="text-2xl font-black mb-1 flex items-center gap-2">
+            <LayoutDashboard size={22} className="text-[#00D964]" />
             Dashboard{' '}
             {!hasFullAccess && (
-              <span className="text-sm font-normal text-white/30 ml-2">· Plan gratuito</span>
+              <span className="text-[10px] font-mono-label uppercase tracking-[0.2em] px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-white/40 ml-1">Plan gratuito</span>
             )}
           </h1>
           <p className="text-white/40 text-sm">
@@ -158,32 +179,62 @@ export default function Dashboard() {
 
         {/* Subscription banner */}
         {!hasFullAccess && (
-          <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-[#00D964]/12 to-[#00D964]/4 border border-[#00D964]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="mb-6 p-6 rounded-2xl glass-card premium-glow border border-[#00D964]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="font-bold text-white mb-1">Desbloquea todos los picks</div>
-              <div className="text-sm text-white/50">$399 MXN/mes · Cancela cuando quieras</div>
+              <div className="text-sm text-white/50">$899 MXN/mes · Cancela cuando quieras</div>
             </div>
             <Link
               to="/#pricing"
-              className="shrink-0 px-5 py-2.5 bg-[#00D964] text-black text-sm font-bold rounded-lg hover:bg-[#00B856] transition-colors flex items-center gap-1"
+              className="shrink-0 px-5 py-2.5 bg-[#00D964] text-black text-sm font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all flex items-center gap-1"
             >
               Ver planes <ChevronRight size={15} />
             </Link>
           </div>
         )}
 
+        {/* Month selector — filters stats, picks list, and history together */}
+        {availableMonths.length > 0 && (
+          <div className="mb-6 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+            <button
+              onClick={() => setSelectedMonth('all')}
+              className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all border active:scale-95 ${
+                effectiveMonth === 'all'
+                  ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
+                  : 'bg-[#111111] border-white/10 text-white/50 hover:text-white hover:border-white/20'
+              }`}
+            >
+              Todos
+            </button>
+            {availableMonths.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSelectedMonth(key)}
+                className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all border active:scale-95 ${
+                  effectiveMonth === key
+                    ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
+                    : 'bg-[#111111] border-white/10 text-white/50 hover:text-white hover:border-white/20'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-          <StatCard icon={Trophy} label="Ganados" value={stats.wins} color="text-[#00D964]" />
-          <StatCard icon={Target} label="Perdidos" value={stats.losses} color="text-red-400" />
-          <StatCard icon={TrendingUp} label="Push ↩️" value={stats.pushes ?? 0} color="text-amber-400" />
+          <StatCard icon={Trophy} label="Ganados" value={filteredStats.wins} color="text-[#00D964]" />
+          <StatCard icon={Target} label="Perdidos" value={filteredStats.losses} color="text-red-400" />
+          <StatCard icon={TrendingUp} label="Push ↩️" value={filteredStats.pushes ?? 0} color="text-amber-400" />
           <StatCard
             icon={TrendingUp}
             label="Utilidad"
-            value={`${stats.utility >= 0 ? '+' : ''}${Number(stats.utility).toFixed(2)}%`}
-            color={stats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
+            value={`${filteredStats.utility >= 0 ? '+' : ''}${Number(filteredStats.utility).toFixed(2)}%`}
+            color={filteredStats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
+            glow
           />
-          <StatCard icon={TrendingUp} label="Total picks" value={stats.total} color="text-white/70" />
+          <StatCard icon={TrendingUp} label="Total picks" value={filteredStats.total} color="text-white/70" />
         </div>
 
         {/* Picks list */}
@@ -228,9 +279,14 @@ export default function Dashboard() {
               <Target size={40} className="mx-auto mb-3 opacity-30" />
               <p>Aún no hay picks publicados</p>
             </div>
+          ) : filteredPicks.length === 0 ? (
+            <div className="text-center py-16 text-white/30">
+              <Target size={40} className="mx-auto mb-3 opacity-30" />
+              <p>No hay picks en este período</p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {picks.map(pick => (
+              {filteredPicks.map(pick => (
                 <PickCard
                   key={pick.id}
                   pick={pick}
@@ -246,7 +302,7 @@ export default function Dashboard() {
         </div>
 
         {/* History table */}
-        <HistoryTable history={history} isSubscribed={hasFullAccess} />
+        <HistoryTable history={filteredHistory} isSubscribed={hasFullAccess} />
 
       </div>
 
@@ -254,10 +310,13 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, color, glow = false }) {
   return (
-    <div className="bg-[#111111] border border-white/8 rounded-xl p-4">
-      <div className="text-white/40 text-xs mb-2">{label}</div>
+    <div className={`glass-card ${glow ? 'premium-glow' : ''} border border-white/8 rounded-2xl p-4`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40">{label}</div>
+        <Icon size={14} className="text-white/30" />
+      </div>
       <div className={`text-2xl font-black ${color}`}>{value}</div>
     </div>
   )
@@ -282,7 +341,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
 
   if (locked) {
     return (
-      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden">
+      <div className="glass-card border border-white/8 rounded-2xl overflow-hidden">
         <div className="p-4">
           <div className="text-xs text-white/35 mb-1">{fmtCDMX(pick.published_at)} · {pick.bookmaker}</div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -300,13 +359,15 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
           </div>
         </div>
         <div className="border-t border-white/5 px-4 py-5 flex flex-col items-center text-center gap-3">
-          <span className="text-xl">🔒</span>
+          <div className="w-10 h-10 rounded-full glass-card border border-white/10 flex items-center justify-center">
+            <Lock size={16} className="text-white/50" />
+          </div>
           {canUnlock ? (
             <>
               <p className="text-sm text-white/70">Pick pendiente — puedes verlo gratis</p>
               <button
                 onClick={() => onUnlock(pick.id)}
-                className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors"
+                className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all"
               >
                 🔓 Desbloquear gratis (te {trialsLeft === 1 ? 'queda' : 'quedan'} {trialsLeft})
               </button>
@@ -315,15 +376,15 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
             <>
               <p className="text-sm font-semibold text-white">Ya usaste tus {trialLimit} picks de prueba gratis</p>
               <p className="text-xs text-white/40 mb-1">Suscríbete para ver todos los picks pendientes</p>
-              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors">
+              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all">
                 Ver planes
               </Link>
             </>
           ) : (
             <>
               <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
-              <p className="text-xs text-white/40">$399 MXN/mes · Cancela cuando quieras</p>
-              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] transition-colors">
+              <p className="text-xs text-white/40">$899 MXN/mes · Cancela cuando quieras</p>
+              <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all">
                 Ver planes
               </Link>
             </>
@@ -336,7 +397,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
   // Pick desbloqueado — mostrar contenido completo
   return (
     <>
-      <div className="bg-[#111111] border border-white/8 rounded-xl overflow-hidden" style={{position:'relative'}}>
+      <div className="glass-card border border-white/8 rounded-2xl overflow-hidden" style={{position:'relative'}}>
         {watermarkText && (
           <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,pointerEvents:'none',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'space-around',alignItems:'center',zIndex:10}}>
             {[0,1,2,3,4,5].map(i => (
@@ -397,11 +458,11 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
 
         <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
           <div>
-            <div className="text-xs text-white/35 mb-1">Pick</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/35 mb-1">Pick</div>
             <div className="text-sm font-semibold text-white">{pick.pick_text}</div>
           </div>
           <div>
-            <div className="text-xs text-white/35 mb-1">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/35 mb-1">
               {pick.is_parlay ? 'Momio total' : pick.is_combined ? 'Momio comb.' : 'Momio'}
             </div>
             <div className={`text-sm font-semibold ${pick.is_parlay ? 'text-orange-400' : pick.is_combined ? 'text-blue-400' : 'text-white/80'}`}>
@@ -412,19 +473,19 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
             </div>
           </div>
           <div>
-            <div className="text-xs text-white/35 mb-1">Stake</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/35 mb-1">Stake</div>
             <div className="text-sm font-semibold text-white/70">{stake}% del bank</div>
           </div>
         </div>
 
         <div className="px-4 pb-4">
-          <div className="text-xs text-white/35 mb-2">Análisis</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/35 mb-2">Análisis</div>
           <p className="text-sm text-white/60 leading-relaxed">{pick.analysis}</p>
         </div>
 
         {utility !== null && (
           <div className="px-4 pb-3">
-            <div className="text-xs text-white/35 mb-1">Utilidad</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/35 mb-1">Utilidad</div>
             {pick.result === 'push' ? (
               <div className="text-sm font-bold text-amber-400">
                 +0.00% del bank <span className="text-xs font-normal text-white/35">(stake devuelto)</span>
@@ -441,7 +502,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
           <div className="px-4 pb-4">
             <button
               onClick={() => setShowShare(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D964]/15 border border-[#00D964]/30 text-[#00D964] text-xs font-semibold hover:bg-[#00D964]/25 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D964]/15 border border-[#00D964]/30 text-[#00D964] text-xs font-semibold hover:bg-[#00D964]/25 active:scale-95 transition-all"
             >
               📸 Compartir
             </button>
@@ -625,7 +686,7 @@ function ShareModal({ pick, onClose, userEmail = 'primepicks.mx' }) {
       onClick={onClose}
     >
       <div
-        className="bg-[#111111] border border-white/10 rounded-2xl p-5 w-full max-w-sm"
+        className="glass-card border border-white/10 rounded-2xl p-5 w-full max-w-sm"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -633,7 +694,7 @@ function ShareModal({ pick, onClose, userEmail = 'primepicks.mx' }) {
           <div className="text-sm font-bold text-white">Story para Instagram</div>
           <button
             onClick={onClose}
-            className="text-white/40 hover:text-white transition-colors"
+            className="text-white/40 hover:text-white active:scale-95 transition-all"
           >
             <X size={18} />
           </button>
@@ -655,7 +716,7 @@ function ShareModal({ pick, onClose, userEmail = 'primepicks.mx' }) {
         {/* Actions */}
         <button
           onClick={handleAction}
-          className="w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 bg-[#00D964] text-black text-sm font-bold rounded-xl hover:bg-[#00B856] active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           {canShare ? (
             '📤 Compartir en Instagram Stories'
@@ -685,8 +746,11 @@ function HistoryTable({ history, isSubscribed }) {
   return (
     <div className="mt-10">
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <h2 className="text-lg font-bold">Historial de picks</h2>
-        <span className="text-sm font-mono bg-[#111111] border border-white/8 px-3 py-1 rounded-lg">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <Receipt size={18} className="text-[#00D964]" />
+          Historial de picks
+        </h2>
+        <span className="text-sm font-mono-label bg-white/5 border border-white/8 px-3 py-1 rounded-lg">
           <span className="text-[#00D964] font-bold">{wins}</span>
           <span className="text-white/30">-</span>
           <span className="text-red-400 font-bold">{losses}</span>
@@ -697,25 +761,27 @@ function HistoryTable({ history, isSubscribed }) {
       </div>
 
       {!isSubscribed ? (
-        <div className="rounded-xl border border-white/10 bg-[#111111] p-10 text-center">
-          <div className="text-4xl mb-3">🔒</div>
+        <div className="rounded-2xl glass-card premium-glow border border-white/10 p-10 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full glass-card border border-white/10 flex items-center justify-center">
+            <Lock size={20} className="text-white/50" />
+          </div>
           <p className="text-white/80 font-semibold mb-1">Historial completo disponible solo para suscriptores Prime</p>
           <p className="text-white/40 text-sm mb-5">Accede a todos los resultados, utilidades y estadísticas del historial.</p>
           <a
             href="/#pricing"
-            className="inline-block px-7 py-2.5 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors text-sm"
+            className="inline-block px-7 py-2.5 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all text-sm"
           >
             Ver planes
           </a>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/8 overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="rounded-2xl glass-card border border-white/8 overflow-hidden">
+          <div className="overflow-x-auto hide-scrollbar">
             <table className="w-full min-w-[700px]">
               <thead>
-                <tr className="bg-[#161616] border-b border-white/8">
+                <tr className="bg-white/5 border-b border-white/8">
                   {['Fecha', 'Partido', 'Pick', 'Momio', 'Stake', 'Utilidad', 'Resultado'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs text-white/40 font-semibold">{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-white/40 font-mono-label font-bold">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -728,7 +794,7 @@ function HistoryTable({ history, isSubscribed }) {
                   const isPush = pick.result === 'push'
                   const utilPos = util >= 0
                   return (
-                    <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-[#0A0A0A]' : 'bg-[#111111]'}`}>
+                    <tr key={pick.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? 'bg-white/[0.015]' : 'bg-transparent'}`}>
                       <td className="px-4 py-3 text-xs text-white/40 whitespace-nowrap">
                         {fmtCDMX(pick.published_at)}
                       </td>
