@@ -3,8 +3,42 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useAppSettings } from '../context/AppSettingsContext'
+import { useLang } from '../context/LanguageContext'
 import { Lock, TrendingUp, Trophy, Target, ChevronRight, X, Download, LayoutDashboard, Receipt } from 'lucide-react'
 import { formatOdds } from '../lib/odds'
+
+const DASH_T = {
+  es: {
+    recentPicks: 'Picks recientes',
+    won: 'Ganados',
+    lost: 'Perdidos',
+    push: 'Push',
+    utility: 'Utilidad',
+    totalPicks: 'Total picks',
+    all: 'Todos',
+    unlockAll: 'Desbloquea todos los picks',
+    usedFreePicksLead: (n) => `✓ Ya usaste tus ${n} picks gratis — suscríbete por `,
+    subscribeSuffix: ' para ver todos',
+    perMonth: '/mes',
+    picksHistory: 'Historial de picks',
+    exclusiveContent: 'Contenido exclusivo para suscriptores Prime',
+  },
+  en: {
+    recentPicks: 'Recent picks',
+    won: 'Won',
+    lost: 'Lost',
+    push: 'Push',
+    utility: 'Utility',
+    totalPicks: 'Total picks',
+    all: 'All',
+    unlockAll: 'Unlock all picks',
+    usedFreePicksLead: (n) => `✓ You've used your ${n} free picks — subscribe for `,
+    subscribeSuffix: ' to see them all',
+    perMonth: '/mo',
+    picksHistory: 'Picks history',
+    exclusiveContent: 'Exclusive content for Prime subscribers',
+  },
+}
 
 const RESULT_STYLES = {
   pending: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
@@ -41,6 +75,8 @@ function monthLabelOf(key) {
 export default function Dashboard() {
   const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
   const { settings } = useAppSettings()
+  const { lang } = useLang()
+  const dt = DASH_T[lang]
   const trialLimit = parseInt(settings?.trial_picks || '2', 10)
   const planPriceDyn = settings?.plan_precio ? `$${settings.plan_precio}` : '$899'
   const [picks, setPicks] = useState([])
@@ -181,7 +217,7 @@ export default function Dashboard() {
         {!hasFullAccess && (
           <div className="mb-6 p-6 rounded-2xl glass-card premium-glow border border-[#00D964]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="font-bold text-white mb-1">Desbloquea todos los picks</div>
+              <div className="font-bold text-white mb-1">{dt.unlockAll}</div>
               <div className="text-sm text-white/50">$899 MXN/mes · Cancela cuando quieras</div>
             </div>
             <Link
@@ -204,7 +240,7 @@ export default function Dashboard() {
                   : 'bg-[#111111] border-white/10 text-white/50 hover:text-white hover:border-white/20'
               }`}
             >
-              Todos
+              {dt.all}
             </button>
             {availableMonths.map(({ key, label }) => (
               <button
@@ -224,22 +260,22 @@ export default function Dashboard() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-          <StatCard icon={Trophy} label="Ganados" value={filteredStats.wins} color="text-[#00D964]" />
-          <StatCard icon={Target} label="Perdidos" value={filteredStats.losses} color="text-red-400" />
-          <StatCard icon={TrendingUp} label="Push ↩️" value={filteredStats.pushes ?? 0} color="text-amber-400" />
+          <StatCard icon={Trophy} label={dt.won} value={filteredStats.wins} color="text-[#00D964]" />
+          <StatCard icon={Target} label={dt.lost} value={filteredStats.losses} color="text-red-400" />
+          <StatCard icon={TrendingUp} label={`${dt.push} ↩️`} value={filteredStats.pushes ?? 0} color="text-amber-400" />
           <StatCard
             icon={TrendingUp}
-            label="Utilidad"
+            label={dt.utility}
             value={`${filteredStats.utility >= 0 ? '+' : ''}${Number(filteredStats.utility).toFixed(2)}%`}
             color={filteredStats.utility >= 0 ? 'text-[#00D964]' : 'text-red-400'}
             glow
           />
-          <StatCard icon={TrendingUp} label="Total picks" value={filteredStats.total} color="text-white/70" />
+          <StatCard icon={TrendingUp} label={dt.totalPicks} value={filteredStats.total} color="text-white/70" />
         </div>
 
         {/* Picks list */}
         <div>
-          <h2 className="text-lg font-bold mb-4">Picks recientes</h2>
+          <h2 className="text-lg font-bold mb-4">{dt.recentPicks}</h2>
 
           {/* RLS save error — shown when unlockPick fails to persist */}
           {trialSaveError && (
@@ -261,7 +297,7 @@ export default function Dashboard() {
             ) : (
               <div className="mb-4 px-4 py-3 rounded-xl bg-[#111111] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <p className="text-sm text-white/60">
-                  ✓ Ya usaste tus {trialLimit} picks gratis — suscríbete por <span className="text-white font-semibold">{planPriceDyn}/mes</span> para ver todos
+                  {dt.usedFreePicksLead(trialLimit)}<span className="text-white font-semibold">{planPriceDyn}{dt.perMonth}</span>{dt.subscribeSuffix}
                 </p>
                 <Link to="/#pricing" className="shrink-0 text-xs font-bold text-[#00D964] hover:underline whitespace-nowrap">
                   Ver plan →
@@ -323,6 +359,8 @@ function StatCard({ icon: Icon, label, value, color, glow = false }) {
 }
 
 function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, watermarkText = '' }) {
+  const { lang } = useLang()
+  const dt = DASH_T[lang]
   const alreadyUnlocked = isSubscribed || pick.is_free || (Array.isArray(trialPickIds) && trialPickIds.includes(pick.id))
   const isPending = pick.result === 'pending'
   const trialsLeft = trialLimit - (Array.isArray(trialPickIds) ? trialPickIds.length : 0)
@@ -382,7 +420,7 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-white">Contenido exclusivo para suscriptores Prime</p>
+              <p className="text-sm font-semibold text-white">{dt.exclusiveContent}</p>
               <p className="text-xs text-white/40">$899 MXN/mes · Cancela cuando quieras</p>
               <Link to="/#pricing" className="px-5 py-2 bg-[#00D964] text-black text-xs font-bold rounded-lg hover:bg-[#00B856] active:scale-95 transition-all">
                 Ver planes
@@ -736,6 +774,9 @@ function ShareModal({ pick, onClose, userEmail = 'primepicks.mx' }) {
 
 /* ── HISTORY TABLE ─────────────────────────────────────────── */
 function HistoryTable({ history, isSubscribed }) {
+  const { lang } = useLang()
+  const dt = DASH_T[lang]
+
   if (history.length === 0) return null
 
   const wins   = history.filter(p => p.result === 'won').length
@@ -748,7 +789,7 @@ function HistoryTable({ history, isSubscribed }) {
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <h2 className="text-lg font-bold flex items-center gap-2">
           <Receipt size={18} className="text-[#00D964]" />
-          Historial de picks
+          {dt.picksHistory}
         </h2>
         <span className="text-sm font-mono-label bg-white/5 border border-white/8 px-3 py-1 rounded-lg">
           <span className="text-[#00D964] font-bold">{wins}</span>

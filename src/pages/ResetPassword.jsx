@@ -1,10 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useLang } from '../context/LanguageContext'
 import { LogoFull } from '../components/Logo'
 import { Eye, EyeOff } from 'lucide-react'
 
+const T = {
+  es: {
+    subtitle: 'Crea una nueva contraseña',
+    newPassword: 'Nueva contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    save: 'Guardar nueva contraseña',
+  },
+  en: {
+    subtitle: 'Create a new password',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm password',
+    save: 'Save new password',
+  },
+}
+
 export default function ResetPassword() {
+  const { lang } = useLang()
+  const t = T[lang]
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -54,7 +72,7 @@ export default function ResetPassword() {
           <Link to="/"><LogoFull height={64} /></Link>
         </div>
         <p className="text-center text-white/40 text-sm -mt-4 mb-8">
-          Crea una nueva contraseña
+          {t.subtitle}
         </p>
 
         <div className="bg-[#111111] border border-white/10 rounded-2xl p-6">
@@ -66,7 +84,7 @@ export default function ResetPassword() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Nueva contraseña</label>
+                <label className="block text-xs text-white/50 mb-1.5">{t.newPassword}</label>
                 <div className="relative">
                   <input
                     type={showPw ? 'text' : 'password'}
@@ -88,7 +106,7 @@ export default function ResetPassword() {
               </div>
 
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Confirmar contraseña</label>
+                <label className="block text-xs text-white/50 mb-1.5">{t.confirmPassword}</label>
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={confirm}
@@ -111,7 +129,7 @@ export default function ResetPassword() {
                 disabled={loading}
                 className="w-full py-3 bg-[#00D964] text-black font-bold rounded-lg hover:bg-[#00B856] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                {loading ? 'Guardando...' : 'Guardar nueva contraseña'}
+                {loading ? 'Guardando...' : t.save}
               </button>
             </form>
           )}

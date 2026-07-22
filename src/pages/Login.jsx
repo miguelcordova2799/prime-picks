@@ -1,11 +1,37 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
 import { supabase } from '../lib/supabase'
 import { LogoFull } from '../components/Logo'
 import { Eye, EyeOff } from 'lucide-react'
 
+const T = {
+  es: {
+    signIn: 'Iniciar sesión',
+    signUp: 'Registrarse',
+    email: 'Correo electrónico',
+    password: 'Contraseña',
+    enterDashboard: 'Entrar al dashboard',
+    createAccount: 'Crear cuenta',
+    forgotPassword: '¿Olvidaste tu contraseña?',
+    sendInstructions: 'Enviar instrucciones',
+  },
+  en: {
+    signIn: 'Sign in',
+    signUp: 'Sign up',
+    email: 'Email',
+    password: 'Password',
+    enterDashboard: 'Enter dashboard',
+    createAccount: 'Create account',
+    forgotPassword: 'Forgot your password?',
+    sendInstructions: 'Send instructions',
+  },
+}
+
 export default function Login() {
+  const { lang } = useLang()
+  const t = T[lang]
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,7 +99,7 @@ export default function Login() {
                     mode === m ? 'bg-[#00D964] text-black' : 'text-white/40 hover:text-white'
                   }`}
                 >
-                  {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
+                  {m === 'login' ? t.signIn : t.signUp}
                 </button>
               ))}
             </div>
@@ -90,7 +116,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs text-white/50 mb-1.5">Correo electrónico</label>
+              <label className="block text-xs text-white/50 mb-1.5">{t.email}</label>
               <input
                 type="email"
                 value={email}
@@ -103,7 +129,7 @@ export default function Login() {
 
             {mode !== 'forgot' && (
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Contraseña</label>
+                <label className="block text-xs text-white/50 mb-1.5">{t.password}</label>
                 <div className="relative">
                   <input
                     type={showPw ? 'text' : 'password'}
@@ -144,10 +170,10 @@ export default function Login() {
               {loading
                 ? 'Cargando...'
                 : mode === 'login'
-                  ? 'Entrar al dashboard'
+                  ? t.enterDashboard
                   : mode === 'signup'
-                    ? 'Crear cuenta'
-                    : 'Enviar instrucciones'}
+                    ? t.createAccount
+                    : t.sendInstructions}
             </button>
 
             {mode === 'login' && !success && (
@@ -156,7 +182,7 @@ export default function Login() {
                 onClick={() => switchMode('forgot')}
                 className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors pt-1"
               >
-                ¿Olvidaste tu contraseña?
+                {t.forgotPassword}
               </button>
             )}
             {mode === 'signup' && !success && (

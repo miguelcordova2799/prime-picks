@@ -2,10 +2,32 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LanguageContext'
 import { Mail, Send } from 'lucide-react'
+
+const T = {
+  es: {
+    title: 'Contacto',
+    subtitle: '¿Tienes preguntas sobre el servicio? Escríbenos y te respondemos pronto.',
+    name: 'Nombre',
+    email: 'Email',
+    message: 'Mensaje',
+    send: 'Enviar mensaje',
+  },
+  en: {
+    title: 'Contact',
+    subtitle: 'Have questions about the service? Write to us and we\'ll get back to you soon.',
+    name: 'Name',
+    email: 'Email',
+    message: 'Message',
+    send: 'Send message',
+  },
+}
 
 export default function Contacto() {
   const { user, profile } = useAuth()
+  const { lang } = useLang()
+  const t = T[lang]
   const [form, setForm] = useState({
     nombre: profile?.nombre || user?.email?.split('@')[0] || '',
     email:  user?.email || '',
@@ -49,10 +71,10 @@ export default function Contacto() {
           <div className="w-10 h-10 rounded-xl bg-[#00D964]/15 border border-[#00D964]/25 flex items-center justify-center">
             <Mail size={18} className="text-[#00D964]" />
           </div>
-          <h1 className="text-2xl font-black">Contacto</h1>
+          <h1 className="text-2xl font-black">{t.title}</h1>
         </div>
         <p className="text-white/40 text-sm mb-10 ml-[52px]">
-          ¿Tienes preguntas sobre el servicio? Escríbenos y te respondemos pronto.
+          {t.subtitle}
         </p>
 
         {sent ? (
@@ -70,7 +92,7 @@ export default function Contacto() {
         ) : (
           <form onSubmit={handleSubmit} className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
             <div>
-              <label className="block text-xs text-white/40 mb-1.5">Nombre</label>
+              <label className="block text-xs text-white/40 mb-1.5">{t.name}</label>
               <input
                 type="text"
                 value={form.nombre}
@@ -81,7 +103,7 @@ export default function Contacto() {
             </div>
 
             <div>
-              <label className="block text-xs text-white/40 mb-1.5">Email</label>
+              <label className="block text-xs text-white/40 mb-1.5">{t.email}</label>
               <input
                 type="email"
                 value={form.email}
@@ -92,7 +114,7 @@ export default function Contacto() {
             </div>
 
             <div>
-              <label className="block text-xs text-white/40 mb-1.5">Mensaje *</label>
+              <label className="block text-xs text-white/40 mb-1.5">{t.message} *</label>
               <textarea
                 value={form.mensaje}
                 onChange={e => field('mensaje', e.target.value)}
@@ -117,7 +139,7 @@ export default function Contacto() {
               {sending ? (
                 <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Enviando...</>
               ) : (
-                <><Send size={15} /> Enviar mensaje</>
+                <><Send size={15} /> {t.send}</>
               )}
             </button>
           </form>

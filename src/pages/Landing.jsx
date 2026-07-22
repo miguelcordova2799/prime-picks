@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, Newspaper, BarChart2, AlertTriangle, Users } from 'lucide-react'
+import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, BarChart2, AlertTriangle, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
 import { useAuth } from '../context/AuthContext'
@@ -83,7 +83,7 @@ const T = {
         period: 'mes',
         one_time: false,
         desc: 'Acceso completo a todos los picks, análisis e historial. Recomendamos iniciar con un bankroll de $10,000 MXN para maximizar el sistema de stakes.',
-        features: ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Noticias del Mundial', 'Cancela cuando quieras'],
+        features: ['Todos los picks con análisis completo', 'Historial completo de resultados', 'Estadísticas en tiempo real', 'Control de apuestas profesional', 'Cancela cuando quieras'],
         highlight: true,
         gold: false,
       },
@@ -112,7 +112,7 @@ const T = {
     rgText: 'Las apuestas son entretenimiento, no una fuente de ingresos garantizada. Nunca apuestes más de lo que puedes perder. Si sientes que el juego está afectando tu vida, busca ayuda.',
 
     // Footer
-    footerLinks: ['Noticias', 'Picks', 'Contacto'],
+    footerLinks: ['Picks', 'Contacto'],
     footerCopy: '© 2026 Prime Picks. Todos los derechos reservados.',
   },
 
@@ -184,7 +184,7 @@ const T = {
         period: 'mo',
         one_time: false,
         desc: 'Full access to all picks, analysis, and history. We recommend starting with a $10,000 MXN bankroll to get the most out of the staking system.',
-        features: ['All picks with full analysis', 'Complete results history', 'Real-time statistics', 'World Cup news', 'Cancel anytime'],
+        features: ['All picks with full analysis', 'Complete results history', 'Real-time statistics', 'Professional bet tracking', 'Cancel anytime'],
         highlight: true,
         gold: false,
       },
@@ -209,7 +209,7 @@ const T = {
     rgTitle: 'Gamble Responsibly',
     rgText: "Betting is entertainment, not a guaranteed income source. Never bet more than you can afford to lose. If you feel gambling is affecting your life, please seek help.",
 
-    footerLinks: ['News', 'Picks', 'Contact'],
+    footerLinks: ['Picks', 'Contact'],
     footerCopy: '© 2026 Prime Picks. All rights reserved.',
   },
 }
@@ -619,7 +619,7 @@ export default function Landing() {
 
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
               {t.footerLinks.map((link, i) => {
-                const hrefs = ['/noticias', '/dashboard', '/contacto']
+                const hrefs = ['/dashboard', '/contacto']
                 return (
                   <Link key={i} to={hrefs[i]} className="text-sm text-white/40 hover:text-white transition-colors">
                     {link}
