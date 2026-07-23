@@ -4,7 +4,7 @@ import { LanguageProvider } from './context/LanguageContext'
 import { AppSettingsProvider, useAppSettings } from './context/AppSettingsContext'
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
-import Landing from './pages/Landing'
+import Landing, { AgeGateModal } from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
@@ -64,6 +64,7 @@ export default function App() {
       <AuthProvider>
         <LanguageProvider>
           <AppSettingsProvider>
+            <AgeGateModal />
             <AppRoutes />
           </AppSettingsProvider>
         </LanguageProvider>

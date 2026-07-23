@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, BarChart2, AlertTriangle, Users } from 'lucide-react'
+import { TrendingUp, Shield, Zap, Star, CheckCircle, Lock, Target, BookOpen, BarChart2, AlertTriangle, Users, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatOdds } from '../lib/odds'
 import { useAuth } from '../context/AuthContext'
@@ -216,7 +216,28 @@ const T = {
 
 const SERVICE_ICONS = [BarChart2, CheckCircle, TrendingUp, BookOpen, Users, Shield]
 
-/* ── LIVE STATS FROM SUPABASE ──────────────────────────────── */
+const MONTH_NAMES = {
+  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+}
+
+// "YYYY-MM" key for an ISO date, in CDMX local time
+function monthKeyCDMX(iso) {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit' })
+}
+
+function currentMonthKeyCDMX() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit' })
+}
+
+function currentMonthLabel(lang) {
+  const now = new Date()
+  const monthIdx = parseInt(now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', month: '2-digit' }), 10) - 1
+  const year = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric' })
+  return `${MONTH_NAMES[lang][monthIdx]} ${year}`
+}
+
+/* ── LIVE STATS FROM SUPABASE (mes actual) ───────────────────── */
 function usePickStats() {
   const [stats, setStats] = useState({ hitRate: null, utility: null, total: null, streak: null })
 
@@ -224,12 +245,15 @@ function usePickStats() {
     async function load() {
       const { data } = await supabase
         .from('picks')
-        .select('result, odds, stake_percent')
+        .select('result, odds, stake_percent, published_at')
         .order('published_at', { ascending: false })
 
       if (!data || data.length === 0) return
 
-      const resolved = data.filter(p => p.result !== 'pending')
+      const currentMonthKey = currentMonthKeyCDMX()
+      const monthData = data.filter(p => monthKeyCDMX(p.published_at) === currentMonthKey)
+
+      const resolved = monthData.filter(p => p.result !== 'pending')
       const won = resolved.filter(p => p.result === 'won')
       const lost = resolved.filter(p => p.result === 'lost')
 
@@ -246,7 +270,7 @@ function usePickStats() {
         : null
       const utility = utilityRaw !== null ? Math.round(utilityRaw * 100) / 100 : null
 
-      // Consecutive wins from most recent resolved pick
+      // Consecutive wins from most recent resolved pick — spans month boundaries on purpose
       let streak = 0
       for (const p of data) {
         if (p.result === 'pending') continue
@@ -254,7 +278,7 @@ function usePickStats() {
         else break
       }
 
-      setStats({ hitRate, utility, total: data.length, streak })
+      setStats({ hitRate, utility, total: monthData.length, streak })
     }
     load()
   }, [])
@@ -282,6 +306,50 @@ function HitRateRing({ hitRate, fmtHit }) {
       />
       <text x="56" y="62" textAnchor="middle" className="fill-white font-black" style={{ fontSize: '20px' }}>{fmtHit}</text>
     </svg>
+  )
+}
+
+/* ── AGE VERIFICATION GATE ────────────────────────────────── */
+export function AgeGateModal() {
+  const [verified, setVerified] = useState(() => {
+    try { return localStorage.getItem('age_verified') === 'true' } catch { return false }
+  })
+
+  if (verified) return null
+
+  function confirmAdult() {
+    try { localStorage.setItem('age_verified', 'true') } catch {}
+    setVerified(true)
+  }
+
+  function rejectMinor() {
+    window.location.href = 'https://www.google.com'
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center px-4 font-display">
+      <div className="glass-card premium-glow border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center">
+        <img src="/logo.png" alt="Prime Picks" className="h-12 mx-auto mb-6 object-contain" />
+        <p className="text-white font-bold text-base mb-3 leading-relaxed">
+          ⚠️ Este sitio contiene contenido relacionado con apuestas deportivas
+        </p>
+        <p className="text-white/50 text-sm mb-8 leading-relaxed">
+          Al ingresar confirmas que tienes 18 años o más y que las apuestas deportivas son legales en tu país o región.
+        </p>
+        <button
+          onClick={confirmAdult}
+          className="w-full py-3 bg-[#00D964] text-black font-bold rounded-xl hover:bg-[#00B856] active:scale-95 transition-all text-sm mb-3"
+        >
+          Tengo 18 años o más — Entrar
+        </button>
+        <button
+          onClick={rejectMinor}
+          className="w-full py-2 text-white/40 hover:text-white/60 active:scale-95 transition-all text-xs"
+        >
+          Soy menor de edad — Salir
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -338,7 +406,8 @@ export default function Landing() {
   const heroWords = heroTitleRaw.trim().split(/\s+/)
   const heroLine1 = heroWords.length > 1 ? heroWords.slice(0, -1).join(' ') : heroTitleRaw
   const heroLine2 = heroWords.length > 1 ? heroWords[heroWords.length - 1] : ''
-  const statsFechaInicio = settings?.stats_fecha_inicio || t.stats[0].sub
+  const statsFechaInicio = currentMonthLabel(lang)
+  const showRacha = settings?.show_racha !== 'false'
   const planFeatures = (() => { try { const a = JSON.parse(settings?.plan_features || '[]'); return a.length > 0 ? a : null } catch { return null } })()
   const resolvedPlan = {
     ...t.plans[0],
@@ -458,13 +527,23 @@ export default function Landing() {
       <section className="border-b border-white/8">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {t.stats.map(({ label, sub }, i) => (
-              <div key={i} className="glass-card border border-white/8 rounded-2xl p-5 text-center">
-                <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-2">{label}</div>
-                <div className="text-3xl md:text-4xl font-black text-[#00D964] mb-1">{STAT_LIVE[i]}</div>
-                <div className="text-xs text-white/40">{i === 0 ? statsFechaInicio : sub}</div>
-              </div>
-            ))}
+            {t.stats.map(({ label, sub }, i) => {
+              const isRacha = i === 3
+              const value = isRacha && !showRacha ? '—' : STAT_LIVE[i]
+              return (
+                <div key={i} className="glass-card border border-white/8 rounded-2xl p-5 text-center">
+                  <div className="text-[10px] uppercase tracking-[0.2em] font-mono-label font-bold text-white/40 mb-2">{label}</div>
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <div className="text-3xl md:text-4xl font-black text-[#00D964]">{value}</div>
+                    {isRacha && (showRacha
+                      ? <Eye size={14} className="text-white/25" />
+                      : <EyeOff size={14} className="text-white/25" />
+                    )}
+                  </div>
+                  <div className="text-xs text-white/40">{i === 0 ? statsFechaInicio : sub}</div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>

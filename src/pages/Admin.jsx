@@ -1574,31 +1574,6 @@ function HeroSection() {
   )
 }
 
-function EstadisticasSection() {
-  const { settings, refreshSettings } = useAppSettings()
-  const [val, setVal] = useState('24 jun 2026')
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
-  useEffect(() => { if (settings.stats_fecha_inicio !== undefined) setVal(settings.stats_fecha_inicio) }, [settings])
-  async function save() {
-    setSaving(true); setMsg('')
-    const { error } = await upsertSettings({ stats_fecha_inicio: val })
-    setSaving(false)
-    if (error) setMsg('Error: ' + error.message)
-    else { await refreshSettings(); setMsg('✅ Guardado'); setTimeout(() => setMsg(''), 3000) }
-  }
-  return (
-    <div className="bg-[#111111] border border-white/8 rounded-2xl p-6 space-y-4">
-      <h3 className="font-bold text-white">📊 Estadísticas</h3>
-      <div>
-        <label className={CFG_LBL}>Fecha de inicio (aparece bajo el % de acierto)</label>
-        <input className={CFG_INP} value={val} onChange={e => setVal(e.target.value)} placeholder="24 jun 2026" />
-      </div>
-      <SaveRow saving={saving} onSave={save} msg={msg} />
-    </div>
-  )
-}
-
 function QuienesSomosSection() {
   const { settings, refreshSettings } = useAppSettings()
   const DEFAULT = 'Prime Picks nació con una misión clara: hacer que apostar sea rentable, inteligente y responsable. No somos adivinos ni vendemos sueños — somos analistas que usan estadística, probabilidad y datos reales para encontrar ventaja real contra las casas de apuestas.'
@@ -1737,11 +1712,11 @@ function PlanSection() {
 
 function TogglesSection() {
   const { settings, setNoticiasEnabled, refreshSettings } = useAppSettings()
-  const [form, setForm] = useState({ noticias_enabled: 'true', banner_trial: 'true', show_features: 'true', show_quienes_somos: 'true' })
+  const [form, setForm] = useState({ noticias_enabled: 'true', banner_trial: 'true', show_features: 'true', show_quienes_somos: 'true', show_racha: 'true' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   useEffect(() => {
-    const keys = ['noticias_enabled', 'banner_trial', 'show_features', 'show_quienes_somos']
+    const keys = ['noticias_enabled', 'banner_trial', 'show_features', 'show_quienes_somos', 'show_racha']
     const u = {}; keys.forEach(k => { if (settings[k] !== undefined) u[k] = settings[k] })
     if (Object.keys(u).length) setForm(f => ({ ...f, ...u }))
   }, [settings])
@@ -1760,6 +1735,7 @@ function TogglesSection() {
       <ToggleRow label="Banner de prueba gratis" desc="Muestra el banner de picks GRATIS en la landing" on={form.banner_trial === 'true'} onToggle={() => toggle('banner_trial')} />
       <ToggleRow label="Sección ¿Por qué Prime Picks?" desc="Muestra los 3 cards de features en la landing" on={form.show_features === 'true'} onToggle={() => toggle('show_features')} />
       <ToggleRow label="Sección ¿Quiénes somos?" desc="Muestra la sección de descripción del equipo en la landing" on={form.show_quienes_somos === 'true'} onToggle={() => toggle('show_quienes_somos')} />
+      <ToggleRow label="Mostrar racha actual en landing" desc="Si está apagado, la tarjeta de Racha muestra — en vez del número" on={form.show_racha === 'true'} onToggle={() => toggle('show_racha')} />
       <SaveRow saving={saving} onSave={save} msg={msg} />
     </div>
   )
@@ -1769,7 +1745,6 @@ function ConfigAdmin() {
   return (
     <div className="space-y-6 max-w-2xl">
       <HeroSection />
-      <EstadisticasSection />
       <QuienesSomosSection />
       <ServiciosSection />
       <PlanSection />
