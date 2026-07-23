@@ -16,8 +16,6 @@ const DASH_T = {
     utility: 'Utilidad',
     totalPicks: 'Total picks',
     all: 'Todos',
-    wholeMonth: 'Todo el mes',
-    week: (n) => `Semana ${n}`,
     unlockAll: 'Desbloquea todos los picks',
     usedFreePicksLead: (n) => `✓ Ya usaste tus ${n} picks gratis — suscríbete por `,
     subscribeSuffix: ' para ver todos',
@@ -33,8 +31,6 @@ const DASH_T = {
     utility: 'Utility',
     totalPicks: 'Total picks',
     all: 'All',
-    wholeMonth: 'Whole month',
-    week: (n) => `Week ${n}`,
     unlockAll: 'Unlock all picks',
     usedFreePicksLead: (n) => `✓ You've used your ${n} free picks — subscribe for `,
     subscribeSuffix: ' to see them all',
@@ -76,18 +72,6 @@ function monthLabelOf(key) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-// Day-of-month (1-31) for a pick's published_at, in CDMX local time
-function dayOfMonthCDMX(iso) {
-  return parseInt(new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City', day: '2-digit' }), 10)
-}
-
-// Semana 1 = días 1-7, Semana 2 = 8-14, Semana 3 = 15-21, Semana 4 = 22-31
-function weekOfMonth(day) {
-  if (day <= 7) return 1
-  if (day <= 14) return 2
-  if (day <= 21) return 3
-  return 4
-}
 
 export default function Dashboard() {
   const { user, profile, loading: authLoading, isSubscribed, hasFullAccess } = useAuth()
@@ -105,8 +89,6 @@ export default function Dashboard() {
 
   // null = "no explicit selection yet" -> defaults to the most recent month once picks load
   const [selectedMonth, setSelectedMonth] = useState(null)
-  // null = "todo el mes" (no week filter) for whichever month is selected
-  const [selectedWeek, setSelectedWeek] = useState(null)
 
   useEffect(() => {
     fetchPicks()
@@ -125,29 +107,9 @@ export default function Dashboard() {
 
   const effectiveMonth = selectedMonth ?? (availableMonths[0]?.key ?? 'all')
 
-  function selectMonth(key) {
-    setSelectedMonth(key)
-    setSelectedWeek(null) // reset to "todo el mes" whenever the month changes
-  }
-
-  const monthPicks = useMemo(() => (
+  const filteredPicks = useMemo(() => (
     effectiveMonth === 'all' ? picks : picks.filter(p => monthKeyOf(p.published_at) === effectiveMonth)
   ), [picks, effectiveMonth])
-
-  const availableWeeks = useMemo(() => {
-    if (effectiveMonth === 'all') return []
-    const weeks = new Set()
-    monthPicks.forEach(p => weeks.add(weekOfMonth(dayOfMonthCDMX(p.published_at))))
-    return [...weeks].sort((a, b) => a - b)
-  }, [monthPicks, effectiveMonth])
-
-  const effectiveWeek = selectedWeek ?? 'all'
-
-  const filteredPicks = useMemo(() => (
-    effectiveMonth === 'all' || effectiveWeek === 'all'
-      ? monthPicks
-      : monthPicks.filter(p => weekOfMonth(dayOfMonthCDMX(p.published_at)) === effectiveWeek)
-  ), [monthPicks, effectiveMonth, effectiveWeek])
 
   const filteredStats = useMemo(() => {
     const resolved = filteredPicks.filter(p => ['won', 'lost', 'push'].includes(p.result))
@@ -270,9 +232,9 @@ export default function Dashboard() {
 
         {/* Month selector — filters stats, picks list, and history together */}
         {availableMonths.length > 0 && (
-          <div className="mb-3 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          <div className="mb-6 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             <button
-              onClick={() => selectMonth('all')}
+              onClick={() => setSelectedMonth('all')}
               className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all border active:scale-95 ${
                 effectiveMonth === 'all'
                   ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
@@ -284,7 +246,7 @@ export default function Dashboard() {
             {availableMonths.map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() => selectMonth(key)}
+                onClick={() => setSelectedMonth(key)}
                 className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-all border active:scale-95 ${
                   effectiveMonth === key
                     ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
@@ -292,35 +254,6 @@ export default function Dashboard() {
                 }`}
               >
                 {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Week selector — only within a specific month */}
-        {effectiveMonth !== 'all' && availableWeeks.length > 0 && (
-          <div className="mb-6 flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
-            <button
-              onClick={() => setSelectedWeek(null)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all border active:scale-95 ${
-                effectiveWeek === 'all'
-                  ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
-                  : 'bg-[#111111] border-white/10 text-white/40 hover:text-white hover:border-white/20'
-              }`}
-            >
-              {dt.wholeMonth}
-            </button>
-            {availableWeeks.map(n => (
-              <button
-                key={n}
-                onClick={() => setSelectedWeek(n)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all border active:scale-95 ${
-                  effectiveWeek === n
-                    ? 'bg-[#00D964]/15 border-[#00D964] text-[#00D964]'
-                    : 'bg-[#111111] border-white/10 text-white/40 hover:text-white hover:border-white/20'
-                }`}
-              >
-                {dt.week(n)}
               </button>
             ))}
           </div>
