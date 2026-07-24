@@ -13,9 +13,14 @@ const T = {
     email: 'Correo electrónico',
     password: 'Contraseña',
     enterDashboard: 'Entrar al dashboard',
-    createAccount: 'Crear cuenta',
+    startFree: 'Empezar gratis →',
     forgotPassword: '¿Olvidaste tu contraseña?',
     sendInstructions: 'Enviar instrucciones',
+    freePicksBannerTitle: '2 picks gratis, sin tarjeta',
+    freePicksBannerSub: 'Crea tu cuenta y elige 2 picks para ver el análisis completo gratis',
+    noCardCancelAnytime: 'Sin tarjeta de crédito · Cancela cuando quieras',
+    alreadyHaveAccount: '¿Ya tienes cuenta? Entra aquí',
+    noAccountYet: '¿No tienes cuenta? Regístrate y obtén 2 picks gratis',
   },
   en: {
     signIn: 'Sign in',
@@ -23,9 +28,14 @@ const T = {
     email: 'Email',
     password: 'Password',
     enterDashboard: 'Enter dashboard',
-    createAccount: 'Create account',
+    startFree: 'Get started free →',
     forgotPassword: 'Forgot your password?',
     sendInstructions: 'Send instructions',
+    freePicksBannerTitle: '2 free picks, no card needed',
+    freePicksBannerSub: 'Create your account and choose 2 picks to see the full analysis for free',
+    noCardCancelAnytime: 'No credit card · Cancel anytime',
+    alreadyHaveAccount: 'Already have an account? Sign in here',
+    noAccountYet: "Don't have an account? Sign up and get 2 free picks",
   },
 }
 
@@ -114,6 +124,24 @@ export default function Login() {
             </button>
           )}
 
+          {mode === 'signup' && (
+            <div className="mb-5 p-4 rounded-xl bg-[#00D964]/10 border border-[#00D964]/30 text-center">
+              <div className="text-2xl mb-1">🎁</div>
+              <div className="text-white font-bold text-sm mb-1">{t.freePicksBannerTitle}</div>
+              <div className="text-white/50 text-xs leading-relaxed">{t.freePicksBannerSub}</div>
+            </div>
+          )}
+
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={() => switchMode('signup')}
+              className="block w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors mb-5"
+            >
+              {t.noAccountYet}
+            </button>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs text-white/50 mb-1.5">{t.email}</label>
@@ -172,7 +200,7 @@ export default function Login() {
                 : mode === 'login'
                   ? t.enterDashboard
                   : mode === 'signup'
-                    ? t.createAccount
+                    ? t.startFree
                     : t.sendInstructions}
             </button>
 
@@ -186,9 +214,18 @@ export default function Login() {
               </button>
             )}
             {mode === 'signup' && !success && (
-              <p className="text-center text-xs text-white/35 pt-1">
-                🎁 Al registrarte obtienes 2 picks gratis de prueba
-              </p>
+              <>
+                <p className="text-center text-xs text-white/35 pt-1">
+                  {t.noCardCancelAnytime}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors pt-1"
+                >
+                  {t.alreadyHaveAccount}
+                </button>
+              </>
             )}
           </form>
         </div>
