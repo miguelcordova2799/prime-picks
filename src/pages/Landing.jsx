@@ -435,10 +435,6 @@ export default function Landing() {
         fontSize: '13px',
         letterSpacing: '0.5px',
         width: '100%',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        zIndex: 1000,
       }}>
         🎁 2 picks GRATIS · Sin tarjeta · Sin compromiso · <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/login')}>Regístrate aquí →</span>
       </div>
@@ -544,7 +540,7 @@ export default function Landing() {
       <section className="border-b border-white/8">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {t.stats.map(({ label, sub }, i) => {
+            {t.stats.map(({ label }, i) => {
               const isRacha = i === 3
               const value = isRacha && !showRacha ? '—' : STAT_LIVE[i]
               return (
@@ -557,7 +553,7 @@ export default function Landing() {
                       : <EyeOff size={14} className="text-white/25" />
                     )}
                   </div>
-                  <div className="text-xs text-white/40">{i === 0 ? statsFechaInicio : sub}</div>
+                  <div className="text-xs text-white/40">{statsFechaInicio}</div>
                 </div>
               )
             })}
