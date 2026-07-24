@@ -425,7 +425,24 @@ export default function Landing() {
     : `🎁 Try ${trialLimit} FREE picks before subscribing`
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-display relative isolate">
+    <>
+      <div style={{
+        background: '#00D964',
+        color: '#000',
+        textAlign: 'center',
+        padding: '10px 16px',
+        fontWeight: '700',
+        fontSize: '13px',
+        letterSpacing: '0.5px',
+        width: '100%',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 1000,
+      }}>
+        🎁 2 picks GRATIS · Sin tarjeta · Sin compromiso · <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/login')}>Regístrate aquí →</span>
+      </div>
+      <div className="min-h-screen bg-[#0A0A0A] text-white font-display relative isolate">
       <div aria-hidden className="absolute inset-0 -z-10 page-ambient-bg" />
 
       {/* ── HERO ── */}
@@ -713,7 +730,8 @@ export default function Landing() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }
 

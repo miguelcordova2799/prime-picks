@@ -89,7 +89,29 @@ export default function Login() {
   const subtitles = { login: 'Accede a tus picks', signup: 'Crea tu cuenta gratis', forgot: 'Restablece tu contraseña' }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
+    <>
+      {mode === 'signup' && (
+        <div style={{
+          background: '#00D964',
+          color: '#000',
+          textAlign: 'center',
+          padding: '12px 16px',
+          fontWeight: '700',
+          fontSize: '14px',
+          letterSpacing: '0.5px',
+          width: '100%',
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          zIndex: 999,
+        }}>
+          🎁 2 picks GRATIS · Sin tarjeta · Sin compromiso
+        </div>
+      )}
+      <div
+        className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4"
+        style={mode === 'signup' ? { marginTop: '48px' } : undefined}
+      >
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
           <Link to="/"><LogoFull height={64} /></Link>
@@ -234,6 +256,7 @@ export default function Login() {
           <Link to="/" className="hover:text-white/60 transition-colors">← Volver al inicio</Link>
         </p>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
