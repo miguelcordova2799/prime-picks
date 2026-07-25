@@ -465,14 +465,25 @@ function PickCard({ pick, isSubscribed, trialPickIds, trialLimit = 2, onUnlock, 
             {pick.is_parlay && pick.parlay_legs?.length > 0 && (
               <div className="mt-2 space-y-1">
                 {pick.parlay_legs.map((leg, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-xs">
+                  <div key={i} className="flex items-center gap-1.5 text-xs flex-wrap">
                     <span className="text-white/25">⚽</span>
                     <span className="text-white/55">{leg.match}</span>
                     <span className="text-white/25">—</span>
                     <span className="text-white/80 font-medium">{leg.pick}</span>
                     <span className="text-white/35 font-mono">({leg.odds})</span>
+                    {leg.result === 'won' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-[#00D964]/20 text-[#00D964]">✅</span>
+                    )}
+                    {leg.result === 'push' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-white/10 text-white/40">↩️ Push</span>
+                    )}
                   </div>
                 ))}
+                {pick.parlay_legs.some(l => l.result === 'push') && (
+                  <div className="text-xs text-amber-400 font-medium pt-1">
+                    Momio ajustado: {formatOdds(pick.odds)} ({pick.parlay_legs.filter(l => l.result === 'push').length} push)
+                  </div>
+                )}
               </div>
             )}
             {pick.is_combined && pick.combined_bets?.length > 0 && (

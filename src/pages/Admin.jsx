@@ -152,7 +152,7 @@ function PicksAdmin() {
 
   const field = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  function handleEdit(pick) {
+  function handleEdit(pick, presetResult) {
     setEditingPick(pick)
     setForm({
       match_name:    pick.match_name  || '',
@@ -162,7 +162,7 @@ function PicksAdmin() {
       stake_percent: parseFloat(pick.stake_percent) || 2,
       analysis:      pick.analysis    || '',
       is_free:       pick.is_free     || false,
-      result:        pick.result      || 'pending',
+      result:        presetResult     || pick.result || 'pending',
       scheduled_at:  pick.published_at
         ? (() => {
             // datetime-local needs local time, not UTC — adjust for timezone offset
@@ -196,7 +196,16 @@ function PicksAdmin() {
         setSubmitting(false)
         return
       }
-      finalOdds = calcParlayTotalOdds(validLegs)
+      // Partial push: if the parlay is marked "won" and some (not all) legs pushed,
+      // the odds get recalculated excluding the pushed legs — the rest of the app
+      // (utility calc, Dashboard display) just reads pick.odds, so we store the
+      // adjusted value there and keep each leg's original odds in parlay_legs.
+      const pushLegs = validLegs.filter(l => l.result === 'push')
+      const lostLegs = validLegs.filter(l => l.result === 'lost')
+      const useAdjustedOdds = form.result === 'won' && pushLegs.length > 0 && lostLegs.length === 0
+      finalOdds = useAdjustedOdds
+        ? calcParlayTotalOdds(validLegs.filter(l => l.result !== 'push'))
+        : calcParlayTotalOdds(validLegs)
       finalPickText = `Parlay ${validLegs.length} patas`
       finalLegs = validLegs
       finalCombinedBets = null
@@ -509,6 +518,51 @@ function PicksAdmin() {
                     </div>
                   )
                 })()}
+
+                {/* Per-leg result — only relevant once the parlay is marked as won (partial push) */}
+                {isEditing && form.result === 'won' && (
+                  <div className="mt-3 p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                    <label className="text-xs text-white/40 block mb-1">Detalle de resultado por pata</label>
+                    {form.parlay_legs.map((leg, i) => {
+                      if (!leg.match.trim() && !leg.pick.trim()) return null
+                      const legResult = leg.result || 'won'
+                      return (
+                        <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-white/60 truncate flex-1">{leg.match} — {leg.pick}</span>
+                          <div className="flex gap-1 shrink-0">
+                            {[
+                              { r: 'won', label: '✅', active: 'bg-[#00D964]/20 border-[#00D964]/40 text-[#00D964]' },
+                              { r: 'lost', label: '❌', active: 'bg-red-500/20 border-red-500/40 text-red-400' },
+                              { r: 'push', label: '↩️', active: 'bg-amber-500/20 border-amber-500/40 text-amber-400' },
+                            ].map(({ r, label, active }) => (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => { const legs = [...form.parlay_legs]; legs[i] = { ...legs[i], result: r }; field('parlay_legs', legs) }}
+                                className={`w-7 h-7 rounded-md border flex items-center justify-center transition-colors ${legResult === r ? active : 'border-white/10 text-white/30 hover:border-white/25'}`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {(() => {
+                      const validLegs = form.parlay_legs.filter(l => l.match.trim() && l.pick.trim() && l.odds.trim())
+                      const pushLegs = validLegs.filter(l => l.result === 'push')
+                      const lostLegs = validLegs.filter(l => l.result === 'lost')
+                      if (pushLegs.length === 0 || lostLegs.length > 0) return null
+                      const originalDecimal = calcParlayTotalOdds(validLegs)
+                      const adjustedDecimal = calcParlayTotalOdds(validLegs.filter(l => l.result !== 'push'))
+                      return (
+                        <div className="mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300">
+                          Momio original: <strong>{decimalToAmerican(originalDecimal)}</strong> → Momio ajustado por push: <strong>{decimalToAmerican(adjustedDecimal)}</strong> ({pushLegs.length} pata{pushLegs.length !== 1 ? 's' : ''} push)
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
@@ -625,10 +679,10 @@ function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
             {[
               { r: 'won',     label: 'Ganado',    Icon: CheckCircle, active: 'bg-[#00D964]/15 text-[#00D964] border-[#00D964]/30',   hover: 'hover:border-[#00D964]/30 hover:text-[#00D964]' },
               { r: 'lost',    label: 'Perdido',   Icon: XCircle,     active: 'bg-red-500/20 text-red-400 border-red-500/30',         hover: 'hover:border-red-500/30 hover:text-red-400' },
-              { r: 'push',    label: 'Push ↩️',   Icon: RefreshCw,   active: 'bg-amber-500/20 text-amber-400 border-amber-500/30',   hover: 'hover:border-amber-500/30 hover:text-amber-400' },
+              { r: 'push',    label: pick.is_parlay ? 'Push total' : 'Push ↩️', Icon: RefreshCw, active: 'bg-amber-500/20 text-amber-400 border-amber-500/30', hover: 'hover:border-amber-500/30 hover:text-amber-400', title: pick.is_parlay ? 'Todas las patas en push — devuelve el stake' : undefined },
               { r: 'pending', label: 'Pendiente', Icon: Clock,       active: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', hover: 'hover:border-yellow-500/30 hover:text-yellow-400' },
-            ].map(({ r, label, Icon, active, hover }) => (
-              <button key={r} onClick={() => onResult(pick.id, r)}
+            ].map(({ r, label, Icon, active, hover, title }) => (
+              <button key={r} onClick={() => onResult(pick.id, r)} title={title}
                 className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${
                   pick.result === r ? active : `border-white/10 text-white/40 ${hover}`
                 }`}>
@@ -636,6 +690,15 @@ function AdminPickCard({ pick, onResult, onEdit, onDelete }) {
               </button>
             ))}
           </div>
+          {pick.is_parlay && (
+            <button
+              onClick={() => onEdit(pick, 'won')}
+              title="Marca cada pata como ganada, perdida o push y el momio se recalcula automáticamente"
+              className="w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-purple-400/30 text-purple-300 hover:bg-purple-400/10 transition-colors"
+            >
+              ✨ Ganado con push (editar patas)
+            </button>
+          )}
           <div className="flex gap-2 pt-1 border-t border-white/6">
             <button onClick={() => onEdit(pick)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#EF9F27] border border-[#EF9F27]/25 hover:bg-[#EF9F27]/10 transition-colors">
